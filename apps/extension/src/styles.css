@@ -1,0 +1,35 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;600;700&display=swap");
+
+:root { color: #f4f7f5; background: #0c1714; font-family: "Space Grotesk", sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; min-width: 390px; min-height: 560px; background: radial-gradient(circle at top right, #173d32, #0c1714 55%); }
+button { border: 0; border-radius: 8px; cursor: pointer; font: inherit; font-weight: 700; padding: 11px 16px; color: #082018; background: #a7f36d; }
+button:hover { background: #c3ff93; }
+button.secondary { color: #b8c8c0; background: #1a2b26; }
+.app-shell { width: 390px; padding: 20px; }
+.hud-header, .score-card, .player-row, .event-footer, .controls { display: flex; align-items: center; }
+.hud-header { justify-content: space-between; margin-bottom: 22px; }
+.eyebrow, .muted { color: #91aaa0; font: 500 10px "DM Mono", monospace; letter-spacing: .12em; margin: 0 0 5px; }
+h1 { font-size: 24px; letter-spacing: -.04em; margin: 0; }
+.live-pill { color: #ff9b8c; font: 500 11px "DM Mono", monospace; }
+.live-pill span { display: inline-block; width: 7px; height: 7px; margin-right: 6px; border-radius: 50%; background: #ff705e; }
+.score-card { justify-content: space-between; border: 1px solid #25453a; border-radius: 12px; padding: 14px; background: #10251e; }
+.score-card strong { font-size: 12px; }
+.team-score { color: #a7f36d; font-size: 20px; font-weight: 700; }
+.opponent { text-align: right; }
+.touchdown-notification { display: flex; gap: 11px; margin: 16px 0; border: 1px solid #8fce55; border-radius: 10px; padding: 12px; background: #1d3c27; box-shadow: 0 0 24px #8fce5533; }
+.touchdown-icon { font-size: 24px; }
+.touchdown-notification strong { color: #baff82; font: 500 11px "DM Mono", monospace; letter-spacing: .08em; }
+.touchdown-notification p { margin: 3px 0 0; font-size: 12px; line-height: 1.3; }
+.players { margin-top: 18px; }
+.player-row { gap: 12px; padding: 13px 0; border-bottom: 1px solid #20362f; }
+.player-badge { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 8px; color: #a7f36d; background: #19352b; font: 500 10px "DM Mono", monospace; }
+.player-info { display: grid; flex: 1; gap: 3px; }
+.player-info strong { font-size: 14px; }
+.player-info span, output { color: #91aaa0; font: 500 12px "DM Mono", monospace; }
+output { color: #f4f7f5; font-size: 15px; }
+output small { color: #91aaa0; font-size: 9px; }
+.event-footer { justify-content: space-between; gap: 12px; margin-top: 20px; font-size: 11px; }
+.event-footer > span:last-child { color: #d4e3dc; text-align: right; }
+.controls { gap: 10px; margin-top: 22px; }
+.controls button:first-child { flex: 1; }
