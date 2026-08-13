@@ -1,0 +1,11 @@
+{
+  "name": "fantasy-football-personal-capstone",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "dev": "npm --workspace @fantasy-hud/extension run dev",
+    "build": "npm --workspace @fantasy-hud/extension run build",
+    "typecheck": "npm --workspace @fantasy-hud/extension run typecheck"
+  }
+}
