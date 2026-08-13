@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "description": "A live fantasy football scoreboard for your browser.",
   "action": {
-    "default_title": "Fantasy Football HUD"
+    "default_title": "Fantasy Football HUD",
+    "default_popup": "index.html"
   },
   "permissions": ["storage"],
   "host_permissions": ["<all_urls>"],
