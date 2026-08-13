@@ -1,0 +1,20 @@
+{
+  "manifest_version": 3,
+  "name": "Fantasy Football HUD",
+  "version": "0.1.0",
+  "description": "A live fantasy football scoreboard for your browser.",
+  "action": {
+    "default_title": "Fantasy Football HUD"
+  },
+  "permissions": ["storage"],
+  "host_permissions": ["<all_urls>"],
+  "background": { "service_worker": "background.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ]
+}
