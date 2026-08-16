@@ -3,6 +3,7 @@ import type { FootballEvent, Player, SimulatedEvent } from "./types";
 export const samplePlayers: Player[] = [
   { id: "purdy", name: "Brock Purdy", position: "QB", team: "SF", fantasyPoints: 0 },
   { id: "kittle", name: "George Kittle", position: "TE", team: "SF", fantasyPoints: 0 },
+  { id: "danh", name: "Danh Mann", position: "WR", team: "SF", fantasyPoints: 0 },
   { id: "mccaffrey", name: "Christian McCaffrey", position: "RB", team: "SF", fantasyPoints: 0 }
 ];
 
@@ -11,6 +12,8 @@ const scriptedEvents: FootballEvent[] = [
   { kind: "rush", playerId: "mccaffrey", yards: 7 },
   { kind: "pass", passerId: "purdy", receiverId: "kittle", yards: 12 },
   { kind: "touchdown", playerId: "kittle", description: "Purdy finds Kittle for a 14-yard touchdown!" },
+  { kind: "pass", passerId: "purdy", receiverId: "danh", yards: 18 },
+  { kind: "touchdown", playerId: "kittle", description: "Purdy finds Kittle for a 45-yard touchdown!" },
   { kind: "drive-end", description: "Extra point is good." }
 ];
 
