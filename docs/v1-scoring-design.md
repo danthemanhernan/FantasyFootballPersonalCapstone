@@ -35,6 +35,8 @@ The scoring engine will return:
 - Negative yardage
 - Duplicate events
 
+Duplicate-event protection is intentionally deferred. The current simulator uses local scripted events rather than a real event stream, so V1 will document the risk and test it later at the event-processing boundary.
+
 ## Invariant
 
 The total score must equal the sum of all scoring-breakdown categories.
@@ -49,3 +51,4 @@ The first version will not support:
 - Two-point conversions
 - Bonuses
 - League persistence
+- Idempotent processing of real event streams; see ADR-006.
