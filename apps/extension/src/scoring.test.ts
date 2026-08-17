@@ -77,4 +77,20 @@ describe("scorePlayer", () => {
 
     expect(result.total).toBe(-1);
   });
+
+  it("reconciles the total with all breakdown categories", () => {
+    const breakdown = scorePlayer(standardScoring, sampleStats);
+
+    const categoryTotal =
+      breakdown.passingYards +
+      breakdown.rushingYards +
+      breakdown.receivingYards +
+      breakdown.receptions +
+      breakdown.passingTouchdowns +
+      breakdown.rushingTouchdowns +
+      breakdown.receivingTouchdowns +
+      breakdown.interceptions;
+
+    expect(breakdown.total).toBe(categoryTotal);
+  });
 });
