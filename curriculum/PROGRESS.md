@@ -4,7 +4,7 @@
 |---|---|---|
 | V0 | Fake event updates HUD | ✅ |
 | V1 | Scoring tests pass | ✅ |
-| V2 | Snapshot survives reload | ☐ |
+| V2 | Snapshot survives reload | ✅ |
 | V3 | Adapter returns canonical roster | ☐ |
 | V4 | Replay emits canonical events | ☐ |
 | V5 | Duplicate delivery is safe | ☐ |
