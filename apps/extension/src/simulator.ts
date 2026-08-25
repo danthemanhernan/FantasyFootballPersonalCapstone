@@ -40,7 +40,11 @@ export const createEvent = (event: FootballEvent, id: number): SimulatedEvent =>
 export const nextEvent = (index: number): SimulatedEvent =>
   createEvent(scriptedEvents[index % scriptedEvents.length], index);
 
-export const applyEvent = (players: Player[], event: SimulatedEvent): Player[] => {
+export const applyEvent = (
+  players: Player[],
+  event: SimulatedEvent,
+  scoringRules = standardScoring,
+): Player[] => {
   const next = players.map((player) => ({ ...player, stats: { ...player.stats } }));
   const update = (id: string, change: Partial<PlayerStats>) => {
     const player = next.find((candidate) => candidate.id === id);
@@ -53,7 +57,7 @@ export const applyEvent = (players: Player[], event: SimulatedEvent): Player[] =
       if (!(key in player.stats)) continue;               // skip unknown stats
       player.stats[key] = (player.stats[key] ?? 0) + delta;
     }
-    player.fantasyPoints = scorePlayer(standardScoring, player.stats).total;
+    player.fantasyPoints = scorePlayer(scoringRules, player.stats).total;
   };
 
   if (event.kind === "pass") {
@@ -68,4 +72,12 @@ export const applyEvent = (players: Player[], event: SimulatedEvent): Player[] =
   }
 
   return next;
+};
+
+export const playersAtCursor = (eventIndex: number, scoringRules = standardScoring): Player[] => {
+  let players = samplePlayers;
+  for (let index = 0; index < eventIndex; index += 1) {
+    players = applyEvent(players, nextEvent(index), scoringRules);
+  }
+  return players;
 };
