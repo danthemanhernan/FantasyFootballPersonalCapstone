@@ -20,6 +20,32 @@ The first increment therefore uses a credential-free fixture adapter and an
 HTTP client with an injected `fetch` function. Live authentication is a
 separate boundary decision once the fixture contract is stable.
 
+## Observed ESPN shape check
+
+Public community documentation and unofficial OpenAPI descriptions agree on
+the shape used by the current adapter:
+
+```text
+GET /apis/v3/games/ffl/seasons/{season}/segments/0/leagues/{leagueId}
+    ?view=mTeam&view=mRoster&scoringPeriodId={period}
+
+response.teams[].roster.entries[] {
+  playerId,
+  lineupSlotId,
+  playerPoolEntry: {
+    id,
+    player: { id, fullName, defaultPositionId, proTeamId }
+  }
+}
+```
+
+The mapper consumes the nested player identity and display fields, while the
+optional scoring period is carried in `LeagueRef`. The fixture includes the
+extra roster fields so tests resemble the observed response without coupling
+the canonical model to lineup or acquisition details. These are observed,
+community-maintained descriptions of an undocumented API, not an ESPN-published
+stability guarantee.
+
 ## Ports and models
 
 ```text

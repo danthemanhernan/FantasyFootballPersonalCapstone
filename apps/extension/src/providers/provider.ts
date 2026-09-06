@@ -3,6 +3,8 @@ export type CanonicalPosition = "QB" | "RB" | "WR" | "TE" | "K" | "DST" | "UNKNO
 export type LeagueRef = {
   leagueId: string;
   season: number;
+  /** ESPN uses this to select the roster/scoring period; omitted for providers that do not need it. */
+  scoringPeriodId?: number;
 };
 
 export type CanonicalRosterPlayer = {

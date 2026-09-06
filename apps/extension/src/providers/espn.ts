@@ -13,7 +13,11 @@ type EspnPlayer = {
   proTeamId?: number;
 };
 
-type EspnRosterEntry = { playerPoolEntry?: { player?: EspnPlayer } };
+type EspnRosterEntry = {
+  playerId?: string | number;
+  lineupSlotId?: number;
+  playerPoolEntry?: { id?: string | number; player?: EspnPlayer };
+};
 type EspnTeam = { id: string | number; roster?: { entries?: EspnRosterEntry[] } };
 type EspnLeaguePayload = { teams: EspnTeam[] };
 
@@ -114,7 +118,14 @@ export class EspnProvider implements ProviderPort {
   ) {}
 
   async loadRoster(ref: LeagueRef): Promise<CanonicalRoster> {
-    const url = `${this.baseUrl}/games/ffl/seasons/${ref.season}/segments/0/leagues/${ref.leagueId}?view=mTeam&view=mRoster`;
+    const url = new URL(
+      `${this.baseUrl}/games/ffl/seasons/${ref.season}/segments/0/leagues/${ref.leagueId}`,
+    );
+    url.searchParams.append("view", "mTeam");
+    url.searchParams.append("view", "mRoster");
+    if (ref.scoringPeriodId !== undefined) {
+      url.searchParams.set("scoringPeriodId", String(ref.scoringPeriodId));
+    }
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), this.timeoutMs);
 

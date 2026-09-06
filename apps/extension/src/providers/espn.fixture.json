@@ -5,7 +5,10 @@
       "roster": {
         "entries": [
           {
+            "playerId": 1001,
+            "lineupSlotId": 0,
             "playerPoolEntry": {
+              "id": 1001,
               "player": {
                 "id": 1001,
                 "fullName": "Brock Purdy",
@@ -15,7 +18,10 @@
             }
           },
           {
+            "playerId": 1002,
+            "lineupSlotId": 2,
             "playerPoolEntry": {
+              "id": 1002,
               "player": {
                 "id": 1002,
                 "fullName": "Christian McCaffrey",
@@ -32,7 +38,10 @@
       "roster": {
         "entries": [
           {
+            "playerId": 1003,
+            "lineupSlotId": 6,
             "playerPoolEntry": {
+              "id": 1003,
               "player": {
                 "id": 1003,
                 "fullName": "George Kittle",
