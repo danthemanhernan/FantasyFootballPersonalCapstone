@@ -1,0 +1,48 @@
+{
+  "teams": [
+    {
+      "id": 1,
+      "roster": {
+        "entries": [
+          {
+            "playerPoolEntry": {
+              "player": {
+                "id": 1001,
+                "fullName": "Brock Purdy",
+                "defaultPositionId": 1,
+                "proTeamId": 25
+              }
+            }
+          },
+          {
+            "playerPoolEntry": {
+              "player": {
+                "id": 1002,
+                "fullName": "Christian McCaffrey",
+                "defaultPositionId": 2,
+                "proTeamId": 25
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "roster": {
+        "entries": [
+          {
+            "playerPoolEntry": {
+              "player": {
+                "id": 1003,
+                "fullName": "George Kittle",
+                "defaultPositionId": 4,
+                "proTeamId": 25
+              }
+            }
+          }
+        ]
+      }
+    }
+  ]
+}
