@@ -5,6 +5,7 @@ Replace placeholders with the exact source, date read, and takeaway. Categories:
 ## Domain modeling
 
 - Martin Fowler, [Value Object](https://martinfowler.com/bliki/ValueObject.html), read 2026-08-16. Takeaway: value objects are identified by their values rather than by a separate identity; this supports treating `PlayerStats`, `ScoringRules`, and `ScoringBreakdown` as calculation inputs and outputs.
+- Martin Fowler, [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html), read 2026-09-06. Takeaway: durable facts and derived state can be separated so state can be rebuilt from an event history; V4 introduces the canonical fact boundary without claiming a durable event store.
 
 ## HTTP and APIs
 
@@ -13,4 +14,5 @@ Replace placeholders with the exact source, date read, and takeaway. Categories:
 - MDN, [AbortController: abort()](https://developer.mozilla.org/en-US/docs/Web/API/AbortController/abort), read 2026-09-05. Takeaway: an abort signal can cancel fetch work, which is the mechanism used by the bounded ESPN request.
 - TypeScript, [Narrowing](https://www.typescriptlang.org/docs/handbook/2/narrowing.html), read 2026-09-05. Takeaway: type guards narrow `unknown` after runtime checks; a compile-time DTO type alone cannot validate network JSON.
 - Chrome for Developers, [Declare permissions](https://developer.chrome.com/docs/extensions/develop/concepts/declare-permissions), read 2026-09-05. Takeaway: extension host permissions enable cross-origin fetches but are also a security and user-trust boundary.
+- IETF, [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339), read 2026-09-06. Takeaway: explicit timestamp formats make event ordering and replay inputs unambiguous across systems.
 - MDN, [Web Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API), read 2026-08-24. Takeaway: browser storage is a string-based client-side boundary, so application data needs explicit serialization, validation, and failure handling.
