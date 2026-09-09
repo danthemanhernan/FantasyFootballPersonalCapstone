@@ -37,6 +37,18 @@ describe("ESPN provider boundary", () => {
     ]);
   });
 
+  it("adds the optional scoring period while preserving repeated view parameters", async () => {
+    const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
+      const url = new URL(input.toString());
+      expect(url.pathname).toContain("/games/ffl/seasons/2026/segments/0/leagues/12345");
+      expect(url.searchParams.getAll("view")).toEqual(["mTeam", "mRoster"]);
+      expect(url.searchParams.get("scoringPeriodId")).toBe("3");
+      return new Response(JSON.stringify(fixture), { status: 200 });
+    });
+
+    await new EspnProvider(fetchImpl).loadRoster({ ...league, scoringPeriodId: 3 });
+  });
+
   it("rejects a renamed or missing payload field", () => {
     expect(() => mapEspnRoster({ teams: [{ id: 1 }] }, league)).toThrowError(
       new ProviderError("INVALID_PAYLOAD", "ESPN team roster is malformed"),
