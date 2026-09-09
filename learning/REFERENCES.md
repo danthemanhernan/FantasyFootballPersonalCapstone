@@ -6,6 +6,8 @@ Replace placeholders with the exact source, date read, and takeaway. Categories:
 
 - Martin Fowler, [Value Object](https://martinfowler.com/bliki/ValueObject.html), read 2026-08-16. Takeaway: value objects are identified by their values rather than by a separate identity; this supports treating `PlayerStats`, `ScoringRules`, and `ScoringBreakdown` as calculation inputs and outputs.
 - Martin Fowler, [Event Sourcing](https://martinfowler.com/eaaDev/EventSourcing.html), read 2026-09-06. Takeaway: durable facts and derived state can be separated so state can be rebuilt from an event history; V4 introduces the canonical fact boundary without claiming a durable event store.
+- Martin Fowler, [Idempotent Receiver](https://martinfowler.com/articles/patterns-of-distributed-systems/idempotent-receiver.html), read 2026-09-08. Takeaway: record a message's identity before applying its effect so repeated delivery becomes a no-op.
+- AWS Builders' Library, [Making retries safe with idempotent APIs](https://aws.amazon.com/builders-library/making-retries-safe-with-idempotent-APIs/), read 2026-09-08. Takeaway: retries create ambiguity when a response is lost, so callers and services need explicit idempotency semantics.
 
 ## HTTP and APIs
 

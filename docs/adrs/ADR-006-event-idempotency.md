@@ -1,7 +1,7 @@
 # ADR-006: Defer event idempotency until real event streams
 
-- Status: Proposed
-- Date: 2026-08-16
+- Status: Accepted for the V5 in-memory lab; durable production implementation deferred
+- Date: 2026-09-08
 
 ## Context
 
@@ -15,7 +15,10 @@ Counting a duplicate touchdown twice would produce an incorrect fantasy score.
 
 Do not add duplicate-event tracking to the V1 scoring function or the current local simulator. Document duplicate delivery as a known limitation and address it at the event-processing boundary when real event streams are introduced.
 
-The future event-processing layer should use a stable provider event ID, record processed IDs, and make repeated delivery of the same event a no-op.
+The V5 event-processing layer uses a stable canonical event ID, records
+processed IDs in an inbox-like store, and makes repeated delivery of the same
+event a no-op. The current implementation is in memory for the lab; a durable
+store is required before production use.
 
 ## Alternatives considered
 
@@ -27,7 +30,9 @@ The future event-processing layer should use a stable provider event ID, record 
 
 V1 remains small and focused on configurable scoring. The current simulator can still double-count an event if the same event is manually applied twice, and that limitation is intentional.
 
-When real event ingestion begins, the system must add idempotency before trusting fantasy totals. This will require a stable event identity and durable or appropriately scoped processed-event state.
+When production event ingestion begins, the system must preserve processed IDs
+across restarts and coordinate them with projection writes. V5 demonstrates the
+boundary and behavior but does not provide that durable transaction.
 
 ## Revisit when
 
