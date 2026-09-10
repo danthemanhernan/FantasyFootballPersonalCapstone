@@ -8,7 +8,7 @@
 | V3 | Adapter returns canonical roster; classified failures and bounded caller retry tested | ✅ |
 | V4 | Replay emits canonical events with deterministic validation and source metadata | ✅ |
 | V5 | Duplicate delivery is safe; audit, ordering, retries, and dead letters tested | ✅ |
-| V6 | API returns read model | ☐ |
+| V6 | API returns read model; dependency-aware health and container path added | ✅ |
 | V7 | Reconnect gets snapshot and deltas | ☐ |
 | V8 | Two leagues stay isolated | ☐ |
 | V9 | Event is traceable end to end | ☐ |
