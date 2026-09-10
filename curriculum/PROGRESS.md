@@ -7,7 +7,7 @@
 | V2 | Snapshot survives reload | ✅ |
 | V3 | Adapter returns canonical roster; classified failures and bounded caller retry tested | ✅ |
 | V4 | Replay emits canonical events with deterministic validation and source metadata | ✅ |
-| V5 | Duplicate delivery is safe | ☐ |
+| V5 | Duplicate delivery is safe; audit, ordering, retries, and dead letters tested | ✅ |
 | V6 | API returns read model | ☐ |
 | V7 | Reconnect gets snapshot and deltas | ☐ |
 | V8 | Two leagues stay isolated | ☐ |
