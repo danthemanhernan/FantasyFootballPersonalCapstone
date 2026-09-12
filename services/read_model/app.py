@@ -3,9 +3,14 @@ from __future__ import annotations
 import asyncio
 import os
 from dataclasses import asdict, dataclass
+from pathlib import Path
 from typing import Protocol
 
+from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
+
+
+load_dotenv(Path(__file__).with_name(".env"))
 
 
 class DependencyUnavailable(RuntimeError):

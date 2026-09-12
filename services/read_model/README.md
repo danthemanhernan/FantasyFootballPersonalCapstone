@@ -11,11 +11,12 @@ Start the local dependencies from the repository root:
 
 ```bash
 docker compose -f infra/v6/docker-compose.yml up -d
-READ_MODEL_BACKEND=postgres-redis \
-POSTGRES_DSN=postgresql://fantasy_hud:fantasy_hud_dev@localhost:55432/fantasy_hud \
-REDIS_URL=redis://localhost:56379 \
+cp .env.example .env
 uv run uvicorn app:app --reload
 ```
+
+`app.py` loads `services/read_model/.env` with `python-dotenv`. The local
+`.env` is ignored by Git; commit configuration changes to `.env.example` only.
 
 The named volumes persist data between restarts. `docker compose ... down`
 stops containers; `down -v` also removes the V6 data volumes.

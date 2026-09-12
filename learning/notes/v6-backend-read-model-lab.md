@@ -64,7 +64,11 @@ repository root:
 
 ```bash
 docker compose -f infra/v6/docker-compose.yml up -d
+cp services/read_model/.env.example services/read_model/.env
 ```
+
+The service reads its local `.env` through `python-dotenv`, so the application
+command does not need inline connection strings or backend flags.
 
 The Postgres and Redis containers are deliberately separate from the FastAPI
 process. Stop them with `docker compose -f infra/v6/docker-compose.yml down`;
