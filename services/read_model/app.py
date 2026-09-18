@@ -9,7 +9,6 @@ from typing import Protocol
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Query
 
-
 load_dotenv(Path(__file__).with_name(".env"))
 
 
@@ -53,15 +52,21 @@ class Cache(Protocol):
 class InMemoryStore(EventRepository, MatchupRepository, Cache):
     def __init__(self) -> None:
         self.events = [
-            Event("demo-001:demo-001-001", "demo-001", "player-kittle", "RECEPTION", 17, 1),
-            Event("demo-001:demo-001-002", "demo-001", "player-kittle", "TOUCHDOWN", 3, 2),
+            Event(
+                "demo-001:demo-001-001", "demo-001", "player-kittle", "RECEPTION", 17, 1
+            ),
+            Event(
+                "demo-001:demo-001-002", "demo-001", "player-kittle", "TOUCHDOWN", 3, 2
+            ),
         ]
         self.matchups = {
-            "matchup-demo": Matchup("matchup-demo", "Dan's Dream Team", "Sunday Scaries", 7.7, 0.0),
+            "matchup-demo": Matchup(
+                "matchup-demo", "Dan's Dream Team", "Sunday Scaries", 7.7, 0.0
+            ),
         }
         self.cache: dict[str, object] = {}
         self.available = True
-        self.delay_seconds = 0.0
+        self.delay_seconds = 0.1
 
     async def _check(self) -> None:
         if self.delay_seconds:
@@ -98,6 +103,7 @@ class PostgresRepository(EventRepository, MatchupRepository):
     async def _pool(self):
         if self.pool is None:
             import asyncpg
+
             self.pool = await asyncpg.create_pool(self.dsn, min_size=1, max_size=5)
         return self.pool
 
@@ -105,7 +111,8 @@ class PostgresRepository(EventRepository, MatchupRepository):
         rows = await (await self._pool()).fetch(
             """SELECT event_id, game_id, player_id, event_type, yards, cursor
                FROM canonical_events WHERE game_id = $1 ORDER BY cursor LIMIT $2""",
-            game_id, limit,
+            game_id,
+            limit,
         )
         return [Event(**dict(row)) for row in rows]
 
@@ -126,16 +133,19 @@ class RedisCache(Cache):
     async def _client(self):
         if self.client is None:
             from redis.asyncio import Redis
+
             self.client = Redis.from_url(self.url, decode_responses=True)
         return self.client
 
     async def get(self, key: str) -> object | None:
         import json
+
         value = await (await self._client()).get(key)
         return json.loads(value) if value else None
 
     async def set(self, key: str, value: object, ttl_seconds: int) -> None:
         import json
+
         await (await self._client()).set(key, json.dumps(asdict(value)), ex=ttl_seconds)
 
     async def ping(self) -> bool:
@@ -192,7 +202,9 @@ def create_app(
             raise HTTPException(status_code=503, detail=str(error)) from error
 
     @app.get("/games/{game_id}/events")
-    async def game_events(game_id: str, limit: int = Query(default=100, ge=1, le=500)) -> list[Event]:
+    async def game_events(
+        game_id: str, limit: int = Query(default=100, ge=1, le=500)
+    ) -> list[Event]:
         try:
             return await events.list_events(game_id, limit)
         except DependencyUnavailable as error:
