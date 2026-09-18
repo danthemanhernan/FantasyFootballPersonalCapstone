@@ -23,3 +23,9 @@ Replace placeholders with the exact source, date read, and takeaway. Categories:
 - aaronweldy, [Unofficial ESPN Fantasy OpenAPI description](https://github.com/aaronweldy/espn-openapi), read 2026-09-06. Takeaway: the observed roster contract includes `playerId`, `lineupSlotId`, and nested player fields, but the project warns that ESPN may change the undocumented API.
 - IETF, [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339), read 2026-09-06. Takeaway: explicit timestamp formats make event ordering and replay inputs unambiguous across systems.
 - MDN, [Web Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API), read 2026-08-24. Takeaway: browser storage is a string-based client-side boundary, so application data needs explicit serialization, validation, and failure handling.
+
+## Async Python and WebSockets
+
+- Python, [asyncio](https://docs.python.org/3/library/asyncio.html), read 2026-09-17. Takeaway: tasks, cancellation, and queues are the core building blocks for live update pipelines; the most reliable async systems design the shutdown path before they optimize throughput.
+- MDN, [WebSocket](https://developer.mozilla.org/en-US/docs/Web/API/WebSocket), read 2026-09-17. Takeaway: a WebSocket is a long-lived channel whose correctness depends on connection lifecycle handling, reconnect recovery, and stale-message detection.
+- websockets, [Python documentation](https://websockets.readthedocs.io/), read 2026-09-17. Takeaway: the library makes explicit the difference between a network disconnect, a slow consumer, and a stale sequence, which is exactly the failure surface a live gateway must control.
