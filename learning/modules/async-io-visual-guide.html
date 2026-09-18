@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Async I/O Visual Guide</title>
+  <style>
+    :root { color-scheme: light dark; --bg: #f5f7fb; --ink: #172033; --muted: #5d6b82; --card: #fff; --line: #cdd6e4; --blue: #3878dc; --green: #16836b; --orange: #d47621; --red: #bd4c55; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #111722; --ink: #edf2fb; --muted: #aab6c9; --card: #1b2433; --line: #3a4659; --blue: #75a8ff; --green: #5ad0ae; --orange: #f2a052; --red: #ff8990; } }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.5 system-ui, sans-serif; }
+    main { max-width: 1100px; margin: 0 auto; padding: 32px 20px 64px; }
+    h1 { margin-bottom: 8px; font-size: clamp(2rem, 5vw, 4rem); line-height: 1; }
+    h2 { margin-top: 42px; }
+    .lead { color: var(--muted); max-width: 760px; font-size: 1.1rem; }
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 24px 0; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; }
+    .card strong { display: block; color: var(--blue); font-size: 1.05rem; }
+    .card span { color: var(--muted); }
+    .lanes { display: grid; gap: 10px; margin: 20px 0; }
+    .lane { display: grid; grid-template-columns: 100px 1fr; align-items: center; gap: 12px; }
+    .label { color: var(--muted); font-weight: 700; }
+    .track { min-height: 50px; border-left: 2px solid var(--line); position: relative; display: flex; align-items: center; gap: 8px; padding: 7px 0 7px 12px; }
+    .block { border-radius: 9px; padding: 7px 12px; color: white; font-weight: 700; white-space: nowrap; }
+    .io { background: var(--blue); }
+    .run { background: var(--orange); }
+    .resume { background: var(--green); }
+    .wait { border: 2px dashed var(--blue); color: var(--blue); border-radius: 9px; padding: 5px 10px; }
+    .steps { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 20px 0; }
+    .step { border: 1px solid var(--line); background: var(--card); border-radius: 10px; padding: 12px; min-width: 150px; }
+    .step.active { outline: 3px solid var(--blue); transform: translateY(-3px); }
+    .arrow { color: var(--muted); font-size: 1.4rem; }
+    button { border: 0; border-radius: 9px; padding: 10px 14px; background: var(--blue); color: white; font: inherit; cursor: pointer; }
+    code { background: color-mix(in srgb, var(--line) 35%, transparent); border-radius: 4px; padding: 2px 5px; }
+    .callout { border-left: 4px solid var(--orange); padding: 12px 16px; background: color-mix(in srgb, var(--orange) 12%, var(--card)); border-radius: 0 10px 10px 0; }
+    @media (max-width: 700px) { .grid { grid-template-columns: repeat(2, 1fr); } .lane { grid-template-columns: 74px 1fr; } .block { white-space: normal; } }
+    @media (max-width: 420px) { .grid { grid-template-columns: 1fr; } }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Async I/O</h1>
+  <p class="lead">One event-loop worker can keep many I/O-bound jobs moving by switching tasks whenever one is waiting.</p>
+
+  <section class="grid" aria-label="Asyncio mental model">
+    <div class="card"><strong>Coroutine</strong><span>Recipe for work</span></div>
+    <div class="card"><strong>Task</strong><span>Scheduled job</span></div>
+    <div class="card"><strong>Future</strong><span>Result placeholder</span></div>
+    <div class="card"><strong>Event loop</strong><span>Dispatcher</span></div>
+  </section>
+
+  <h2>One worker, many waits</h2>
+  <div class="lanes" aria-label="Event loop timeline">
+    <div class="lane"><div class="label">Task A</div><div class="track"><span class="block run">run</span><span class="wait">await database</span><span class="block resume">resume</span></div></div>
+    <div class="lane"><div class="label">Task B</div><div class="track"><span class="block run">run</span><span class="wait">await Redis</span><span class="block resume">resume</span></div></div>
+    <div class="lane"><div class="label">Loop</div><div class="track"><span class="block io">switch while waiting</span></div></div>
+  </div>
+  <p class="callout"><strong>Key rule:</strong> <code>await</code> pauses the current task. A blocking call pauses the event-loop thread.</p>
+
+  <h2>What happens at <code>await</code>?</h2>
+  <div class="steps" id="awaitSteps">
+    <div class="step active"><strong>1. Task runs</strong><br>Python executes until it reaches an awaitable.</div><span class="arrow">→</span>
+    <div class="step"><strong>2. Task yields</strong><br>The event loop records what it is waiting for.</div><span class="arrow">→</span>
+    <div class="step"><strong>3. Other work runs</strong><br>Another ready task gets the worker.</div><span class="arrow">→</span>
+    <div class="step"><strong>4. Task resumes</strong><br>The result arrives and execution continues.</div>
+  </div>
+  <button type="button" id="nextStep">Show next step</button>
+
+  <h2>Future, task, coroutine</h2>
+  <div class="grid">
+    <div class="card"><strong>Coroutine</strong><span><code>work()</code> creates the recipe; it may not have started.</span></div>
+    <div class="card"><strong>Task</strong><span><code>create_task(work())</code> schedules the recipe.</span></div>
+    <div class="card"><strong>Future</strong><span>An eventual result slot that can be awaited.</span></div>
+    <div class="card"><strong>Await</strong><span>Wait for the result while the loop serves other work.</span></div>
+  </div>
+</main>
+<script>
+  const steps = [...document.querySelectorAll('#awaitSteps .step')];
+  const button = document.getElementById('nextStep');
+  let current = 0;
+  button.addEventListener('click', () => {
+    current = (current + 1) % steps.length;
+    steps.forEach((step, index) => step.classList.toggle('active', index === current));
+    button.textContent = `Step ${current + 1} highlighted`;
+  });
+</script>
+</body>
+</html>
