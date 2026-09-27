@@ -1,0 +1,76 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: fantasy_hud
+      POSTGRES_USER: fantasy_hud
+      POSTGRES_PASSWORD: fantasy_hud_dev
+    ports:
+      - "55432:5432"
+    volumes:
+      - fantasy_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U fantasy_hud -d fantasy_hud"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  migrate:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: fantasy_hud_dev
+    volumes:
+      - ../../services/read_model/schema.sql:/schema.sql:ro
+    command: ["psql", "-h", "postgres", "-U", "fantasy_hud", "-d", "fantasy_hud", "-f", "/schema.sql"]
+
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "56379:6379"
+    volumes:
+      - fantasy_redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 2s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build:
+      context: ../../services/read_model
+    environment:
+      READ_MODEL_BACKEND: postgres-redis
+      POSTGRES_DSN: postgresql://fantasy_hud:fantasy_hud_dev@postgres:5432/fantasy_hud
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live')"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  dashboard:
+    build:
+      context: ../..
+      dockerfile: apps/dashboard/Dockerfile
+      args:
+        VITE_API_URL: http://127.0.0.1:8000
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5174:80"
+
+volumes:
+  fantasy_postgres_data:
+  fantasy_redis_data:

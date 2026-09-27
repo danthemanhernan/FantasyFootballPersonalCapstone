@@ -1,6 +1,6 @@
 import type { PlayerStats } from "./scoring";
 
-export type Position = "QB" | "RB" | "WR" | "TE";
+export type Position = "QB" | "RB" | "WR" | "TE" | "K" | "DST" | "UNKNOWN";
 
 export type Player = {
   id: string;

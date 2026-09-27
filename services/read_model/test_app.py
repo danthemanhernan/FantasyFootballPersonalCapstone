@@ -3,11 +3,11 @@ from app import InMemoryStore, create_app
 from httpx import ASGITransport, AsyncClient
 
 
-async def request(app, method: str, path: str):
+async def request(app, method: str, path: str, **kwargs):
     async with AsyncClient(
         transport=ASGITransport(app=app), base_url="http://test"
     ) as client:
-        return await client.request(method, path)
+        return await client.request(method, path, **kwargs)
 
 
 @pytest.mark.asyncio
@@ -98,3 +98,31 @@ async def test_cache_aside_experiment(capsys):
 
     assert first.status_code == 200
     assert second.status_code == 200
+
+
+@pytest.mark.asyncio
+async def test_roster_sync_populates_multi_league_dashboard():
+    app = create_app()
+    payload = {
+        "league_id": "league-123",
+        "season": 2026,
+        "team_id": "1",
+        "league_name": "Sunday League",
+        "team_name": "Dan's Team",
+        "players": [
+            {
+                "player_id": "1001",
+                "name": "Example Player",
+                "position": "WR",
+                "pro_team": "SF",
+            }
+        ],
+    }
+
+    synced = await request(app, "POST", "/sync/espn-roster", json=payload)
+    dashboard = await request(app, "GET", "/dashboard")
+
+    assert synced.status_code == 200
+    assert dashboard.status_code == 200
+    assert dashboard.json()["teams"][0]["league_name"] == "Sunday League"
+    assert dashboard.json()["teams"][0]["players"][0]["name"] == "Example Player"

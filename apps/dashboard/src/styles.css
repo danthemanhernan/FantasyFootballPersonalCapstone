@@ -1,0 +1,26 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;600;700&display=swap");
+:root { color: #f3f8f5; background: #07130f; font-family: "Space Grotesk", sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: radial-gradient(circle at 80% 0, #174333, transparent 35%), #07130f; }
+main { width: min(1180px, calc(100% - 40px)); margin: 0 auto; padding: 56px 0 90px; }
+.hero { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
+.eyebrow { margin: 0 0 8px; color: #93b4a5; font: 500 11px "DM Mono", monospace; letter-spacing: .14em; }
+h1 { margin: 0; font-size: clamp(36px, 7vw, 72px); letter-spacing: -.06em; line-height: .95; }
+.lede { color: #93b4a5; font-size: 18px; }
+.status { border: 1px solid #315c4d; border-radius: 999px; padding: 8px 12px; color: #93b4a5; font: 500 11px "DM Mono", monospace; text-transform: uppercase; }
+.status.live { color: #b8ff83; border-color: #6eaa46; }
+.metrics { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 42px 0; }
+.metrics article { display: grid; gap: 4px; border: 1px solid #1e3a31; border-radius: 14px; padding: 20px; background: rgba(15, 39, 31, .7); }
+.metrics strong { color: #a7f36d; font-size: 32px; }
+.metrics span { color: #93b4a5; }
+.league-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(340px, 1fr)); gap: 18px; }
+.team-card, .empty { border: 1px solid #24483b; border-radius: 18px; padding: 20px; background: rgba(10, 29, 23, .88); box-shadow: 0 24px 80px rgba(0, 0, 0, .2); }
+.team-card > header { display: flex; justify-content: space-between; gap: 18px; align-items: center; padding-bottom: 16px; }
+.team-card header p { margin: 0 0 4px; color: #93b4a5; font: 500 10px "DM Mono", monospace; }
+.team-card h2, .empty h2 { margin: 0; font-size: 20px; }
+.team-card header > strong { color: #a7f36d; }
+.player { display: grid; grid-template-columns: 40px 1fr 34px; gap: 10px; padding: 10px 0; border-top: 1px solid #19352b; }
+.player b { color: #a7f36d; font: 500 11px "DM Mono", monospace; }
+.player small { color: #93b4a5; text-align: right; }
+.empty { color: #93b4a5; }
+@media (max-width: 650px) { .metrics { grid-template-columns: 1fr; } .hero { display: grid; } }

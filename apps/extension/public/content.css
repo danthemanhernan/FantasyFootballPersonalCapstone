@@ -1,1 +1,13 @@
-.fantasy-hud-root { all: initial; }
+.fantasy-hud-root { all: initial; position: fixed; z-index: 2147483646; top: 84px; right: 24px; width: 310px; color: #f4f7f5; font-family: system-ui, sans-serif; }
+.fantasy-hud-panel { overflow: hidden; border: 1px solid #315c4d; border-radius: 14px; background: rgba(8, 24, 19, .94); box-shadow: 0 18px 54px rgba(0, 0, 0, .42); backdrop-filter: blur(14px); }
+.fantasy-hud-panel header { display: flex; justify-content: space-between; align-items: center; padding: 13px 15px; color: #a7f36d; font-size: 12px; font-weight: 800; letter-spacing: .08em; }
+.fantasy-hud-panel button { border: 0; color: #91aaa0; background: transparent; cursor: pointer; font-size: 16px; }
+.fantasy-hud-team { padding: 0 15px 12px; }
+.fantasy-hud-team h3 { margin: 0 0 8px; color: #fff; font-size: 13px; }
+.fantasy-hud-player { display: grid; grid-template-columns: 32px 1fr auto; gap: 8px; align-items: center; padding: 7px 0; border-top: 1px solid rgba(145, 170, 160, .16); font-size: 12px; }
+.fantasy-hud-player b { color: #a7f36d; font-size: 10px; }
+.fantasy-hud-player output { color: #fff; font-weight: 800; }
+.fantasy-hud-empty { padding: 0 15px 15px; color: #91aaa0; font-size: 12px; }
+.fantasy-hud-marker-layer { pointer-events: none; position: fixed; z-index: 2147483645; inset: 0; }
+.fantasy-hud-marker { position: absolute; border: 2px solid #a7f36d; border-radius: 8px; box-shadow: 0 0 18px rgba(167, 243, 109, .65); }
+.fantasy-hud-marker span { position: absolute; left: -2px; bottom: 100%; padding: 4px 7px; color: #082018; background: #a7f36d; font: 700 11px system-ui, sans-serif; white-space: nowrap; }
