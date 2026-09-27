@@ -32,8 +32,10 @@ output small { color: #91aaa0; font-size: 9px; }
 .event-footer { justify-content: space-between; gap: 12px; margin-top: 20px; font-size: 11px; }
 .event-footer > span:last-child { color: #d4e3dc; text-align: right; }
 .league-settings { display: grid; grid-template-columns: 1fr 72px 80px; gap: 8px; margin-top: 18px; }
-.league-settings label { display: grid; gap: 5px; color: #91aaa0; font: 500 9px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
-.league-settings input { width: 100%; border: 1px solid #25453a; border-radius: 7px; padding: 8px; color: #f4f7f5; background: #10251e; font: 500 11px "DM Mono", monospace; }
+.league-settings label, .account-settings label { display: grid; gap: 5px; color: #91aaa0; font: 500 9px "DM Mono", monospace; letter-spacing: .08em; text-transform: uppercase; }
+.league-settings input, .account-settings input { width: 100%; border: 1px solid #25453a; border-radius: 7px; padding: 8px; color: #f4f7f5; background: #10251e; font: 500 11px "DM Mono", monospace; }
+.account-settings { display: grid; gap: 8px; margin-top: 18px; padding: 12px; border: 1px solid #25453a; border-radius: 10px; }
+.account-settings > div { display: flex; gap: 8px; }
 .controls { flex-wrap: wrap; gap: 10px; margin-top: 16px; }
 .controls button:first-child { flex: 1; }
 .sync-status { margin: 12px 0 0; color: #91aaa0; font: 500 10px/1.4 "DM Mono", monospace; }

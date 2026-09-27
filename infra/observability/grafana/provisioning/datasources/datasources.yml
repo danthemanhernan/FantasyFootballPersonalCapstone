@@ -1,0 +1,23 @@
+apiVersion: 1
+
+datasources:
+  - name: Fantasy Prometheus
+    uid: fantasy-prometheus
+    type: prometheus
+    access: proxy
+    url: http://prometheus:9090
+    isDefault: true
+
+  - name: Fantasy Postgres
+    uid: fantasy-postgres
+    type: postgres
+    access: proxy
+    url: postgres:5432
+    user: fantasy_hud
+    secureJsonData:
+      password: fantasy_hud_dev
+    jsonData:
+      database: fantasy_hud
+      sslmode: disable
+      postgresVersion: 1600
+      timescaledb: false

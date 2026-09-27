@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run build:all
+      - run: npm test
+
+  api:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen
+        working-directory: services/read_model
+      - run: uv run pytest -q
+        working-directory: services/read_model
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker compose -f infra/dev/docker-compose.yml config --quiet
+      - run: docker compose -f infra/dev/docker-compose.yml up --build --wait
+      - run: curl --fail http://127.0.0.1:8000/health/ready
+      - run: docker compose -f infra/dev/docker-compose.yml down --volumes
+        if: always()
