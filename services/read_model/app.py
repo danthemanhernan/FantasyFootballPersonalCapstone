@@ -7,7 +7,17 @@ from pathlib import Path
 from typing import Protocol
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi.middleware.cors import CORSMiddleware
+
+from dashboard import (
+    DashboardHub,
+    DashboardRepository,
+    DashboardSnapshot,
+    EspnRosterSync,
+    FantasyTeam,
+    RosterPlayer,
+)
 
 load_dotenv(Path(__file__).with_name(".env"))
 
@@ -49,7 +59,7 @@ class Cache(Protocol):
     async def ping(self) -> bool: ...
 
 
-class InMemoryStore(EventRepository, MatchupRepository, Cache):
+class InMemoryStore(EventRepository, MatchupRepository, Cache, DashboardRepository):
     def __init__(self) -> None:
         self.events = [
             Event(
@@ -65,6 +75,7 @@ class InMemoryStore(EventRepository, MatchupRepository, Cache):
             ),
         }
         self.cache: dict[str, object] = {}
+        self.fantasy_teams: dict[tuple[str, str], FantasyTeam] = {}
         self.available = True
         self.delay_seconds = 0.1
 
@@ -94,8 +105,26 @@ class InMemoryStore(EventRepository, MatchupRepository, Cache):
         await self._check()
         return True
 
+    async def upsert_espn_roster(self, roster: EspnRosterSync) -> None:
+        await self._check()
+        self.fantasy_teams[(roster.league_id, roster.team_id)] = FantasyTeam(
+            league_id=roster.league_id,
+            team_id=roster.team_id,
+            league_name=roster.league_name,
+            team_name=roster.team_name,
+            season=roster.season,
+            players=roster.players,
+        )
 
-class PostgresRepository(EventRepository, MatchupRepository):
+    async def dashboard(self) -> DashboardSnapshot:
+        await self._check()
+        teams = sorted(
+            self.fantasy_teams.values(), key=lambda team: (team.league_name, team.team_name)
+        )
+        return DashboardSnapshot(teams=teams)
+
+
+class PostgresRepository(EventRepository, MatchupRepository, DashboardRepository):
     def __init__(self, dsn: str) -> None:
         self.dsn = dsn
         self.pool = None
@@ -123,6 +152,95 @@ class PostgresRepository(EventRepository, MatchupRepository):
             matchup_id,
         )
         return Matchup(**dict(row)) if row else None
+
+    async def upsert_espn_roster(self, roster: EspnRosterSync) -> None:
+        pool = await self._pool()
+        async with pool.acquire() as connection:
+            async with connection.transaction():
+                await connection.execute(
+                    """INSERT INTO fantasy_leagues (provider, league_id, season, name)
+                       VALUES ('espn', $1, $2, $3)
+                       ON CONFLICT (provider, league_id, season)
+                       DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()""",
+                    roster.league_id,
+                    roster.season,
+                    roster.league_name,
+                )
+                await connection.execute(
+                    """INSERT INTO fantasy_teams
+                           (provider, league_id, season, team_id, name)
+                       VALUES ('espn', $1, $2, $3, $4)
+                       ON CONFLICT (provider, league_id, season, team_id)
+                       DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()""",
+                    roster.league_id,
+                    roster.season,
+                    roster.team_id,
+                    roster.team_name,
+                )
+                await connection.execute(
+                    """DELETE FROM fantasy_roster_players
+                       WHERE provider = 'espn' AND league_id = $1
+                         AND season = $2 AND team_id = $3""",
+                    roster.league_id,
+                    roster.season,
+                    roster.team_id,
+                )
+                if roster.players:
+                    await connection.executemany(
+                        """INSERT INTO fantasy_roster_players
+                               (provider, league_id, season, team_id, player_id,
+                                player_name, position, pro_team)
+                           VALUES ('espn', $1, $2, $3, $4, $5, $6, $7)""",
+                        [
+                            (
+                                roster.league_id,
+                                roster.season,
+                                roster.team_id,
+                                player.player_id,
+                                player.name,
+                                player.position,
+                                player.pro_team,
+                            )
+                            for player in roster.players
+                        ],
+                    )
+
+    async def dashboard(self) -> DashboardSnapshot:
+        rows = await (await self._pool()).fetch(
+            """SELECT l.league_id, l.season, l.name AS league_name,
+                      t.team_id, t.name AS team_name,
+                      p.player_id, p.player_name, p.position, p.pro_team
+               FROM fantasy_leagues l
+               JOIN fantasy_teams t USING (provider, league_id, season)
+               LEFT JOIN fantasy_roster_players p
+                 USING (provider, league_id, season, team_id)
+               WHERE l.provider = 'espn'
+               ORDER BY l.name, t.name, p.player_name"""
+        )
+        teams: dict[tuple[str, int, str], FantasyTeam] = {}
+        for row in rows:
+            key = (row["league_id"], row["season"], row["team_id"])
+            team = teams.setdefault(
+                key,
+                FantasyTeam(
+                    league_id=row["league_id"],
+                    team_id=row["team_id"],
+                    league_name=row["league_name"],
+                    team_name=row["team_name"],
+                    season=row["season"],
+                    players=[],
+                ),
+            )
+            if row["player_id"] is not None:
+                team.players.append(
+                    RosterPlayer(
+                        player_id=row["player_id"],
+                        name=row["player_name"],
+                        position=row["position"],
+                        pro_team=row["pro_team"],
+                    )
+                )
+        return DashboardSnapshot(teams=list(teams.values()))
 
 
 class RedisCache(Cache):
@@ -158,19 +276,35 @@ def create_configured_app() -> FastAPI:
     dsn = os.environ["POSTGRES_DSN"]
     redis_url = os.environ["REDIS_URL"]
     postgres = PostgresRepository(dsn)
-    return create_app(postgres, postgres, RedisCache(redis_url))
+    return create_app(postgres, postgres, RedisCache(redis_url), postgres)
 
 
 def create_app(
     event_repository: EventRepository | None = None,
     matchup_repository: MatchupRepository | None = None,
     cache: Cache | None = None,
+    dashboard_repository: DashboardRepository | None = None,
+    dashboard_hub: DashboardHub | None = None,
 ) -> FastAPI:
     default_store = InMemoryStore()
     events = event_repository or default_store
     matchups = matchup_repository or default_store
     read_cache = cache or default_store
+    dashboards = dashboard_repository or default_store
+    hub = dashboard_hub or DashboardHub()
     app = FastAPI(title="Fantasy HUD Read Model", version="0.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=[
+            "http://localhost:5173",
+            "http://127.0.0.1:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:5174",
+        ],
+        allow_origin_regex=r"chrome-extension://.*",
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
     @app.get("/health/live")
     async def liveness() -> dict[str, str]:
@@ -209,6 +343,37 @@ def create_app(
             return await events.list_events(game_id, limit)
         except DependencyUnavailable as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
+
+    @app.get("/dashboard")
+    async def dashboard() -> DashboardSnapshot:
+        try:
+            return await dashboards.dashboard()
+        except DependencyUnavailable as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+
+    @app.post("/sync/espn-roster")
+    async def sync_espn_roster(roster: EspnRosterSync) -> DashboardSnapshot:
+        try:
+            await dashboards.upsert_espn_roster(roster)
+            snapshot = await dashboards.dashboard()
+            await hub.publish(snapshot)
+            return snapshot
+        except DependencyUnavailable as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+
+    @app.websocket("/ws/dashboard")
+    async def dashboard_socket(websocket: WebSocket) -> None:
+        await websocket.accept()
+        subscriber = hub.subscribe()
+        queue = await anext(subscriber)
+        try:
+            await websocket.send_json(hub.snapshot_message(await dashboards.dashboard()))
+            while True:
+                await websocket.send_json(await queue.get())
+        except WebSocketDisconnect:
+            pass
+        finally:
+            await subscriber.aclose()
 
     return app
 

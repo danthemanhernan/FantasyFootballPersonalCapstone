@@ -8,6 +8,8 @@
   "scripts": {
     "dev": "npm --workspace @fantasy-hud/extension run dev",
     "build": "npm --workspace @fantasy-hud/extension run build",
+    "build:all": "npm run build && npm --workspace @fantasy-hud/dashboard run build",
+    "dashboard:dev": "npm --workspace @fantasy-hud/dashboard run dev",
     "typecheck": "npm --workspace @fantasy-hud/extension run typecheck",
     "test": "npm --workspace @fantasy-hud/extension run test"
   }

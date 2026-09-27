@@ -58,3 +58,20 @@ Load apps/extension/dist as an unpacked Chrome extension. The current simulator 
 Suggested pacing is 4–6 months at 5–7 hr/week, but milestone evidence matters more than dates. For every version: read prerequisites, predict, implement, inject failure, answer checkpoints, and document deferrals.
 
 See curriculum/PROGRESS.md, docs/architecture, docs/adrs, and learning/REFERENCES.md. ADR-001 in docs/adr is preserved Sprint 0 work.
+
+## Integrated local application
+
+Start the durable API and command center:
+
+```bash
+docker compose -f infra/dev/docker-compose.yml up --build -d
+npm run build
+```
+
+Open `http://127.0.0.1:5174` and load `apps/extension/dist` as an unpacked
+Chrome extension. In the popup, enter the ESPN league ID and team ID, then
+select **Load ESPN roster**. Refresh an open YouTube tab after reloading the
+extension so its content script can render the overlay.
+
+See `docs/product-architecture.md` for implemented boundaries, deliberate
+deferrals, cloud direction, and the vision-system learning path.

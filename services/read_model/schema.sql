@@ -27,3 +27,44 @@ INSERT INTO matchup_projections
 VALUES
   ('matchup-demo', 'Dan''s Dream Team', 'Sunday Scaries', 7.7, 0.0)
 ON CONFLICT (matchup_id) DO NOTHING;
+
+CREATE TABLE IF NOT EXISTS fantasy_leagues (
+  provider TEXT NOT NULL,
+  league_id TEXT NOT NULL,
+  season INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (provider, league_id, season)
+);
+
+CREATE TABLE IF NOT EXISTS fantasy_teams (
+  provider TEXT NOT NULL,
+  league_id TEXT NOT NULL,
+  season INTEGER NOT NULL,
+  team_id TEXT NOT NULL,
+  name TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (provider, league_id, season, team_id),
+  FOREIGN KEY (provider, league_id, season)
+    REFERENCES fantasy_leagues (provider, league_id, season)
+    ON DELETE CASCADE
+);
+
+CREATE TABLE IF NOT EXISTS fantasy_roster_players (
+  provider TEXT NOT NULL,
+  league_id TEXT NOT NULL,
+  season INTEGER NOT NULL,
+  team_id TEXT NOT NULL,
+  player_id TEXT NOT NULL,
+  player_name TEXT NOT NULL,
+  position TEXT NOT NULL,
+  pro_team TEXT NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (provider, league_id, season, team_id, player_id),
+  FOREIGN KEY (provider, league_id, season, team_id)
+    REFERENCES fantasy_teams (provider, league_id, season, team_id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS fantasy_roster_players_pro_team
+  ON fantasy_roster_players (pro_team);

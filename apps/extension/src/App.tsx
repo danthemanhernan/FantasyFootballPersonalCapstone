@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Hud } from "./components/Hud";
+import { EspnProvider } from "./providers/espn";
 import type { ScoringRules } from "./scoring";
 import {
   applyEvent,
@@ -16,6 +17,19 @@ import {
   type PersistedSnapshot,
 } from "./storage";
 import type { Player, SimulatedEvent } from "./types";
+
+const apiBaseUrl = "http://127.0.0.1:8000";
+
+const emptyStats = () => ({
+  passingYards: 0,
+  rushingYards: 0,
+  receivingYards: 0,
+  receptions: 0,
+  passingTouchdowns: 0,
+  rushingTouchdowns: 0,
+  receivingTouchdowns: 0,
+  interceptions: 0,
+});
 
 const describeEvent = (event: SimulatedEvent) => {
   if (event.kind === "pass")
@@ -34,6 +48,85 @@ export default function App() {
     () => defaultSnapshot().scoringRules,
   );
   const [hydrated, setHydrated] = useState(false);
+  const [espnStatus, setEspnStatus] = useState("ESPN roster not loaded");
+  const [leagueId, setLeagueId] = useState("");
+  const [teamId, setTeamId] = useState("");
+  const [season, setSeason] = useState(2026);
+
+  const loadLiveRoster = async () => {
+    if (!leagueId.trim() || !teamId.trim()) {
+      setEspnStatus("Enter both an ESPN league ID and team ID");
+      return;
+    }
+    setEspnStatus("Loading ESPN roster...");
+    try {
+      const roster = await new EspnProvider().loadRoster({ leagueId, season });
+      const teamPlayers = roster.players.filter((player) => player.source.teamId === teamId);
+      if (teamPlayers.length === 0) {
+        throw new Error(`No players found for ESPN team ID ${teamId}`);
+      }
+      const hudPlayers: Player[] = teamPlayers.map((player) => ({
+        id: player.id,
+        name: player.name,
+        position: player.position,
+        team: player.team,
+        stats: emptyStats(),
+        fantasyPoints: 0,
+      }));
+      setPlayers(hudPlayers);
+
+      const payload = {
+        league_id: leagueId,
+        season,
+        team_id: teamId,
+        league_name: `ESPN League ${leagueId}`,
+        team_name: `ESPN Team ${teamId}`,
+        players: teamPlayers.map((player) => ({
+          player_id: player.source.playerId,
+          name: player.name,
+          position: player.position,
+          pro_team: player.team,
+        })),
+      };
+      const response = await fetch(`${apiBaseUrl}/sync/espn-roster`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      if (!response.ok) throw new Error(`Backend sync returned HTTP ${response.status}`);
+
+      const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (activeTab?.id !== undefined) {
+        await chrome.tabs.sendMessage(activeTab.id, {
+          type: "FANTASY_HUD_UPDATE",
+          payload: { ...payload, players: hudPlayers },
+        }).catch(() => undefined);
+      }
+      console.log("Live ESPN roster:", roster);
+      setEspnStatus(`Synced ${teamPlayers.length} players to the HUD`);
+    } catch (error) {
+      console.error("ESPN request failed:", error);
+      setEspnStatus(error instanceof Error ? error.message : "ESPN request failed");
+    }
+  };
+
+  const demoVisionMarkers = async () => {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (activeTab?.id === undefined) return;
+    const detections = players.slice(0, 3).map((player, index) => ({
+      label: player.name,
+      confidence: 0.92 - index * 0.06,
+      x: 160 + index * 260,
+      y: 240 + (index % 2) * 130,
+      width: 110,
+      height: 210,
+    }));
+    await chrome.tabs.sendMessage(activeTab.id, {
+      type: "FANTASY_HUD_VISION_DETECTIONS",
+      detections,
+    }).catch(() => undefined);
+    setEspnStatus("Injected demo vision detections into the active YouTube tab");
+  };
 
   useEffect(() => {
     const snapshot = loadSnapshot(browserStorage);
@@ -94,9 +187,33 @@ export default function App() {
         latestEvent={latestEvent}
         touchdownMessage={touchdownMessage}
       />
+      <section className="league-settings" aria-label="ESPN league settings">
+        <label>
+          League ID
+          <input value={leagueId} onChange={(event) => setLeagueId(event.target.value)} />
+        </label>
+        <label>
+          Team ID
+          <input value={teamId} onChange={(event) => setTeamId(event.target.value)} />
+        </label>
+        <label>
+          Season
+          <input
+            type="number"
+            value={season}
+            onChange={(event) => setSeason(Number(event.target.value))}
+          />
+        </label>
+      </section>
       <div className="controls">
         <button onClick={() => setRunning((value) => !value)}>
           {running ? "Pause" : "Start simulation"}
+        </button>
+        <button className="secondary" onClick={loadLiveRoster}>
+          Load ESPN roster
+        </button>
+        <button className="secondary" onClick={demoVisionMarkers}>
+          Demo vision markers
         </button>
         <button className="secondary" onClick={toggleScoring}>
           {scoringRules.receptionPoints === 0
@@ -107,6 +224,7 @@ export default function App() {
           Reset
         </button>
       </div>
+      <p className="sync-status" aria-live="polite">{espnStatus}</p>
     </div>
   );
 }

@@ -112,7 +112,7 @@ const classifyStatus = (status: number): ProviderError => {
 
 export class EspnProvider implements ProviderPort {
   constructor(
-    private readonly fetchImpl: FetchLike = fetch,
+    private readonly fetchImpl: FetchLike = globalThis.fetch.bind(globalThis),
     private readonly timeoutMs = 5_000,
     private readonly baseUrl = "https://lm-api-reads.fantasy.espn.com/apis/v3",
   ) {}
@@ -145,9 +145,10 @@ export class EspnProvider implements ProviderPort {
       }
     } catch (error) {
       if (error instanceof ProviderError) throw error;
+      const reason = error instanceof Error ? `: ${error.message}` : "";
       throw new ProviderError("UNAVAILABLE", controller.signal.aborted
         ? "ESPN request timed out"
-        : "ESPN request failed");
+        : `ESPN request failed${reason}`);
     } finally {
       clearTimeout(timeout);
     }
