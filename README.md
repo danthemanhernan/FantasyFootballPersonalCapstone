@@ -69,9 +69,22 @@ npm run build
 ```
 
 Open `http://127.0.0.1:5174` and load `apps/extension/dist` as an unpacked
-Chrome extension. In the popup, enter the ESPN league ID and team ID, then
+Chrome extension. Create the same account in the command center and extension.
+In the popup, enter the ESPN league ID and team ID, then
 select **Load ESPN roster**. Refresh an open YouTube tab after reloading the
 extension so its content script can render the overlay.
+
+The API now includes per-user authorization, encrypted provider-connection
+storage, a deduplicated canonical event inbox, transactional score projections,
+an outbox-to-Redis delivery path, Prometheus metrics, JSON logs, optional OTLP
+traces, checksummed migrations, CI, and backup/restore drills. See
+`docs/operations.md` and `docs/vision-system-design.md`.
+
+Grafana is available at `http://127.0.0.1:3000` with local-only credentials
+`admin` / `fantasy_hud_dev`. Its provisioned dashboard combines Prometheus API
+telemetry with PostgreSQL league and scoring statistics. Prometheus is at
+`http://127.0.0.1:9090`. Change credentials and use a read-only database role
+outside local development.
 
 See `docs/product-architecture.md` for implemented boundaries, deliberate
 deferrals, cloud direction, and the vision-system learning path.

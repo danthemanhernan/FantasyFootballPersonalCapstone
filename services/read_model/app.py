@@ -1,13 +1,26 @@
 from __future__ import annotations
 
 import asyncio
+import hmac
+import json
+import logging
 import os
+from contextlib import asynccontextmanager
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Protocol
 
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import (
+    Depends,
+    FastAPI,
+    Header,
+    HTTPException,
+    Query,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 
 from dashboard import (
@@ -18,8 +31,33 @@ from dashboard import (
     FantasyTeam,
     RosterPlayer,
 )
+from events import (
+    CanonicalPlay,
+    EventPipeline,
+    InMemoryEventPipeline,
+    OutboxPublisher,
+    PostgresEventPipeline,
+    RedisStreamBroker,
+    RedisStreamConsumer,
+)
+from observability import configure_observability
+from security import (
+    CredentialCipher,
+    InMemorySecurityStore,
+    LoginRequest,
+    Passwords,
+    PostgresSecurityStore,
+    ProviderConnectionRequest,
+    ProviderConnectionSummary,
+    RegisterRequest,
+    SecurityStore,
+    TokenManager,
+    TokenResponse,
+)
 
 load_dotenv(Path(__file__).with_name(".env"))
+
+LOCAL_USER_ID = "00000000-0000-0000-0000-000000000001"
 
 
 class DependencyUnavailable(RuntimeError):
@@ -75,7 +113,7 @@ class InMemoryStore(EventRepository, MatchupRepository, Cache, DashboardReposito
             ),
         }
         self.cache: dict[str, object] = {}
-        self.fantasy_teams: dict[tuple[str, str], FantasyTeam] = {}
+        self.fantasy_teams: dict[tuple[str, str, str], FantasyTeam] = {}
         self.available = True
         self.delay_seconds = 0.1
 
@@ -105,9 +143,9 @@ class InMemoryStore(EventRepository, MatchupRepository, Cache, DashboardReposito
         await self._check()
         return True
 
-    async def upsert_espn_roster(self, roster: EspnRosterSync) -> None:
+    async def upsert_espn_roster(self, user_id: str, roster: EspnRosterSync) -> None:
         await self._check()
-        self.fantasy_teams[(roster.league_id, roster.team_id)] = FantasyTeam(
+        self.fantasy_teams[(user_id, roster.league_id, roster.team_id)] = FantasyTeam(
             league_id=roster.league_id,
             team_id=roster.team_id,
             league_name=roster.league_name,
@@ -116,10 +154,15 @@ class InMemoryStore(EventRepository, MatchupRepository, Cache, DashboardReposito
             players=roster.players,
         )
 
-    async def dashboard(self) -> DashboardSnapshot:
+    async def dashboard(self, user_id: str) -> DashboardSnapshot:
         await self._check()
         teams = sorted(
-            self.fantasy_teams.values(), key=lambda team: (team.league_name, team.team_name)
+            (
+                team
+                for (owner, _, _), team in self.fantasy_teams.items()
+                if owner == user_id
+            ),
+            key=lambda team: (team.league_name, team.team_name),
         )
         return DashboardSnapshot(teams=teams)
 
@@ -153,46 +196,48 @@ class PostgresRepository(EventRepository, MatchupRepository, DashboardRepository
         )
         return Matchup(**dict(row)) if row else None
 
-    async def upsert_espn_roster(self, roster: EspnRosterSync) -> None:
+    async def upsert_espn_roster(self, user_id: str, roster: EspnRosterSync) -> None:
         pool = await self._pool()
         async with pool.acquire() as connection:
             async with connection.transaction():
                 await connection.execute(
-                    """INSERT INTO fantasy_leagues (provider, league_id, season, name)
-                       VALUES ('espn', $1, $2, $3)
-                       ON CONFLICT (provider, league_id, season)
+                    """INSERT INTO user_fantasy_leagues
+                           (user_id, provider, league_id, season, name)
+                       VALUES ($1::uuid, 'espn', $2, $3, $4)
+                       ON CONFLICT (user_id, provider, league_id, season)
                        DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()""",
+                    user_id,
                     roster.league_id,
                     roster.season,
                     roster.league_name,
                 )
                 await connection.execute(
-                    """INSERT INTO fantasy_teams
-                           (provider, league_id, season, team_id, name)
-                       VALUES ('espn', $1, $2, $3, $4)
-                       ON CONFLICT (provider, league_id, season, team_id)
+                    """INSERT INTO user_fantasy_teams
+                           (user_id, provider, league_id, season, team_id, name)
+                       VALUES ($1::uuid, 'espn', $2, $3, $4, $5)
+                       ON CONFLICT (user_id, provider, league_id, season, team_id)
                        DO UPDATE SET name = EXCLUDED.name, updated_at = NOW()""",
+                    user_id,
                     roster.league_id,
                     roster.season,
                     roster.team_id,
                     roster.team_name,
                 )
-                await connection.execute(
-                    """DELETE FROM fantasy_roster_players
-                       WHERE provider = 'espn' AND league_id = $1
-                         AND season = $2 AND team_id = $3""",
-                    roster.league_id,
-                    roster.season,
-                    roster.team_id,
-                )
                 if roster.players:
                     await connection.executemany(
-                        """INSERT INTO fantasy_roster_players
-                               (provider, league_id, season, team_id, player_id,
+                        """INSERT INTO user_roster_players
+                               (user_id, provider, league_id, season, team_id, player_id,
                                 player_name, position, pro_team)
-                           VALUES ('espn', $1, $2, $3, $4, $5, $6, $7)""",
+                           VALUES ($1::uuid, 'espn', $2, $3, $4, $5, $6, $7, $8)
+                           ON CONFLICT
+                               (user_id, provider, league_id, season, team_id, player_id)
+                           DO UPDATE SET player_name = EXCLUDED.player_name,
+                                         position = EXCLUDED.position,
+                                         pro_team = EXCLUDED.pro_team,
+                                         updated_at = NOW()""",
                         [
                             (
+                                user_id,
                                 roster.league_id,
                                 roster.season,
                                 roster.team_id,
@@ -204,18 +249,34 @@ class PostgresRepository(EventRepository, MatchupRepository, DashboardRepository
                             for player in roster.players
                         ],
                     )
+                await connection.execute(
+                    """DELETE FROM user_roster_players
+                       WHERE user_id = $1::uuid AND provider = 'espn' AND league_id = $2
+                         AND season = $3 AND team_id = $4
+                         AND NOT (player_id = ANY($5::text[]))""",
+                    user_id,
+                    roster.league_id,
+                    roster.season,
+                    roster.team_id,
+                    [player.player_id for player in roster.players],
+                )
 
-    async def dashboard(self) -> DashboardSnapshot:
+    async def dashboard(self, user_id: str) -> DashboardSnapshot:
         rows = await (await self._pool()).fetch(
             """SELECT l.league_id, l.season, l.name AS league_name,
                       t.team_id, t.name AS team_name,
-                      p.player_id, p.player_name, p.position, p.pro_team
-               FROM fantasy_leagues l
-               JOIN fantasy_teams t USING (provider, league_id, season)
-               LEFT JOIN fantasy_roster_players p
-                 USING (provider, league_id, season, team_id)
-               WHERE l.provider = 'espn'
-               ORDER BY l.name, t.name, p.player_name"""
+                      p.player_id, p.player_name, p.position, p.pro_team,
+                      COALESCE(s.fantasy_points, 0) AS fantasy_points
+               FROM user_fantasy_leagues l
+               JOIN user_fantasy_teams t
+                 USING (user_id, provider, league_id, season)
+               LEFT JOIN user_roster_players p
+                 USING (user_id, provider, league_id, season, team_id)
+               LEFT JOIN player_score_projections s
+                 USING (user_id, provider, league_id, season, team_id, player_id)
+               WHERE l.user_id = $1::uuid AND l.provider = 'espn'
+               ORDER BY l.name, t.name, p.player_name""",
+            user_id,
         )
         teams: dict[tuple[str, int, str], FantasyTeam] = {}
         for row in rows:
@@ -240,20 +301,21 @@ class PostgresRepository(EventRepository, MatchupRepository, DashboardRepository
                         pro_team=row["pro_team"],
                     )
                 )
+                team.points += row["fantasy_points"]
         return DashboardSnapshot(teams=list(teams.values()))
 
 
 class RedisCache(Cache):
     def __init__(self, url: str) -> None:
         self.url = url
-        self.client = None
+        self._redis = None
 
     async def _client(self):
-        if self.client is None:
+        if self._redis is None:
             from redis.asyncio import Redis
 
-            self.client = Redis.from_url(self.url, decode_responses=True)
-        return self.client
+            self._redis = Redis.from_url(self.url, decode_responses=True)
+        return self._redis
 
     async def get(self, key: str) -> object | None:
         import json
@@ -269,6 +331,9 @@ class RedisCache(Cache):
     async def ping(self) -> bool:
         return bool(await (await self._client()).ping())
 
+    async def client(self):
+        return await self._client()
+
 
 def create_configured_app() -> FastAPI:
     if os.getenv("READ_MODEL_BACKEND") != "postgres-redis":
@@ -276,7 +341,35 @@ def create_configured_app() -> FastAPI:
     dsn = os.environ["POSTGRES_DSN"]
     redis_url = os.environ["REDIS_URL"]
     postgres = PostgresRepository(dsn)
-    return create_app(postgres, postgres, RedisCache(redis_url), postgres)
+    if os.getenv("APP_ENV") == "production":
+        for name in ("AUTH_SECRET", "PROVIDER_ENCRYPTION_KEY", "INGEST_API_KEY"):
+            if not os.getenv(name):
+                raise RuntimeError(f"{name} is required in production")
+    token_manager = TokenManager(
+        os.getenv("AUTH_SECRET", "local-auth-secret-change-me-000000000000000000")
+    )
+    cipher = CredentialCipher(
+        os.getenv(
+            "PROVIDER_ENCRYPTION_KEY",
+            "local-provider-key-change-me-000000000000000",
+        )
+    )
+    redis = RedisCache(redis_url)
+    broker = RedisStreamBroker(redis.client)
+    return create_app(
+        postgres,
+        postgres,
+        redis,
+        postgres,
+        security_store=PostgresSecurityStore(postgres._pool),
+        token_manager=token_manager,
+        credential_cipher=cipher,
+        event_pipeline=PostgresEventPipeline(postgres._pool),
+        outbox_publisher=OutboxPublisher(postgres._pool, broker),
+        stream_consumer=RedisStreamConsumer(redis.client),
+        auth_required=True,
+        ingest_key=os.getenv("INGEST_API_KEY", "local-ingest-key"),
+    )
 
 
 def create_app(
@@ -285,6 +378,14 @@ def create_app(
     cache: Cache | None = None,
     dashboard_repository: DashboardRepository | None = None,
     dashboard_hub: DashboardHub | None = None,
+    security_store: SecurityStore | None = None,
+    token_manager: TokenManager | None = None,
+    credential_cipher: CredentialCipher | None = None,
+    event_pipeline: EventPipeline | None = None,
+    outbox_publisher: OutboxPublisher | None = None,
+    stream_consumer: RedisStreamConsumer | None = None,
+    auth_required: bool = False,
+    ingest_key: str = "local-ingest-key",
 ) -> FastAPI:
     default_store = InMemoryStore()
     events = event_repository or default_store
@@ -292,7 +393,54 @@ def create_app(
     read_cache = cache or default_store
     dashboards = dashboard_repository or default_store
     hub = dashboard_hub or DashboardHub()
-    app = FastAPI(title="Fantasy HUD Read Model", version="0.1.0")
+    security = security_store or InMemorySecurityStore()
+    tokens = token_manager or TokenManager("local-development-auth-secret-32chars")
+    cipher = credential_cipher or CredentialCipher(
+        "local-development-provider-secret-32chars"
+    )
+    pipeline = event_pipeline or InMemoryEventPipeline()
+    passwords = Passwords()
+    @asynccontextmanager
+    async def lifespan(_: FastAPI):
+        tasks: list[asyncio.Task[None]] = []
+        background_logger = logging.getLogger("fantasy_hud.background")
+
+        async def publish_outbox() -> None:
+            while True:
+                try:
+                    await outbox_publisher.publish_pending()
+                    await asyncio.sleep(0.25)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    background_logger.exception("outbox publish failed")
+                    await asyncio.sleep(1)
+
+        async def consume_stream() -> None:
+            while True:
+                try:
+                    await stream_consumer.run(hub.publish_delta)
+                except asyncio.CancelledError:
+                    raise
+                except Exception:
+                    background_logger.exception("stream consume failed")
+                    await asyncio.sleep(1)
+
+        if outbox_publisher:
+            tasks.append(asyncio.create_task(publish_outbox()))
+        if stream_consumer:
+            tasks.append(asyncio.create_task(consume_stream()))
+        try:
+            yield
+        finally:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    app = FastAPI(
+        title="Fantasy HUD Read Model", version="0.2.0", lifespan=lifespan
+    )
+    configure_observability(app)
     app.add_middleware(
         CORSMiddleware,
         allow_origins=[
@@ -305,6 +453,60 @@ def create_app(
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
+
+    async def current_user(authorization: str | None = Header(default=None)) -> str:
+        if not auth_required:
+            return LOCAL_USER_ID
+        if not authorization or not authorization.startswith("Bearer "):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="bearer token required",
+            )
+        try:
+            return tokens.verify(authorization.removeprefix("Bearer "))
+        except Exception as error:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="invalid or expired token",
+            ) from error
+
+    @app.post("/accounts/register", response_model=TokenResponse, status_code=201)
+    async def register(request: RegisterRequest) -> TokenResponse:
+        try:
+            user = await security.create_user(request.email, passwords.hash(request.password))
+        except ValueError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        return TokenResponse(access_token=tokens.issue(user))
+
+    @app.post("/auth/token", response_model=TokenResponse)
+    async def login(request: LoginRequest) -> TokenResponse:
+        user = await security.find_user_by_email(request.email)
+        if user is None or not passwords.verify(user.password_hash, request.password):
+            raise HTTPException(status_code=401, detail="invalid credentials")
+        return TokenResponse(access_token=tokens.issue(user))
+
+    @app.post(
+        "/provider-connections",
+        response_model=ProviderConnectionSummary,
+        status_code=201,
+    )
+    async def save_provider_connection(
+        request: ProviderConnectionRequest,
+        user_id: str = Depends(current_user),
+    ) -> ProviderConnectionSummary:
+        encrypted = cipher.encrypt(json.dumps(request.credentials).encode())
+        return await security.save_connection(
+            user_id,
+            request.provider,
+            request.external_account_id,
+            encrypted,
+        )
+
+    @app.get("/provider-connections", response_model=list[ProviderConnectionSummary])
+    async def provider_connections(
+        user_id: str = Depends(current_user),
+    ) -> list[ProviderConnectionSummary]:
+        return await security.list_connections(user_id)
 
     @app.get("/health/live")
     async def liveness() -> dict[str, str]:
@@ -345,35 +547,58 @@ def create_app(
             raise HTTPException(status_code=503, detail=str(error)) from error
 
     @app.get("/dashboard")
-    async def dashboard() -> DashboardSnapshot:
+    async def dashboard(user_id: str = Depends(current_user)) -> DashboardSnapshot:
         try:
-            return await dashboards.dashboard()
+            return await dashboards.dashboard(user_id)
         except DependencyUnavailable as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
 
     @app.post("/sync/espn-roster")
-    async def sync_espn_roster(roster: EspnRosterSync) -> DashboardSnapshot:
+    async def sync_espn_roster(
+        roster: EspnRosterSync,
+        user_id: str = Depends(current_user),
+    ) -> DashboardSnapshot:
         try:
-            await dashboards.upsert_espn_roster(roster)
-            snapshot = await dashboards.dashboard()
-            await hub.publish(snapshot)
+            await dashboards.upsert_espn_roster(user_id, roster)
+            snapshot = await dashboards.dashboard(user_id)
+            await hub.publish(user_id, snapshot)
             return snapshot
         except DependencyUnavailable as error:
             raise HTTPException(status_code=503, detail=str(error)) from error
 
     @app.websocket("/ws/dashboard")
     async def dashboard_socket(websocket: WebSocket) -> None:
+        if auth_required:
+            token = websocket.query_params.get("token")
+            try:
+                user_id = tokens.verify(token or "")
+            except Exception:
+                await websocket.close(code=4401)
+                return
+        else:
+            user_id = LOCAL_USER_ID
         await websocket.accept()
-        subscriber = hub.subscribe()
+        subscriber = hub.subscribe(user_id)
         queue = await anext(subscriber)
         try:
-            await websocket.send_json(hub.snapshot_message(await dashboards.dashboard()))
+            await websocket.send_json(
+                hub.snapshot_message(await dashboards.dashboard(user_id))
+            )
             while True:
                 await websocket.send_json(await queue.get())
         except WebSocketDisconnect:
             pass
         finally:
             await subscriber.aclose()
+
+    @app.post("/ingest/events")
+    async def ingest_event(
+        play: CanonicalPlay,
+        x_ingest_key: str | None = Header(default=None),
+    ):
+        if not x_ingest_key or not hmac.compare_digest(x_ingest_key, ingest_key):
+            raise HTTPException(status_code=401, detail="invalid ingest key")
+        return await pipeline.ingest(play)
 
     return app
 

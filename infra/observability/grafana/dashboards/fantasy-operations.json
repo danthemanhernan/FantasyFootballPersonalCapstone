@@ -1,0 +1,58 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "graphTooltip": 1,
+  "panels": [
+    {
+      "datasource": {"type": "prometheus", "uid": "fantasy-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "reqps"}},
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+      "id": 1,
+      "targets": [{"expr": "sum(rate(fantasy_hud_http_requests_total[5m])) by (status)", "legendFormat": "HTTP {{status}}", "refId": "A"}],
+      "title": "API request rate",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "prometheus", "uid": "fantasy-prometheus"},
+      "fieldConfig": {"defaults": {"unit": "s"}},
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+      "id": 2,
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(fantasy_hud_http_request_duration_seconds_bucket[5m])) by (le, path))", "legendFormat": "{{path}}", "refId": "A"}],
+      "title": "API p95 latency",
+      "type": "timeseries"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "fantasy-postgres"},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 8},
+      "id": 3,
+      "targets": [{"format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(*) AS tracked_leagues FROM user_fantasy_leagues;", "refId": "A"}],
+      "title": "Tracked leagues",
+      "type": "stat"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "fantasy-postgres"},
+      "gridPos": {"h": 10, "w": 18, "x": 6, "y": 8},
+      "id": 4,
+      "targets": [{"format": "table", "rawQuery": true, "rawSql": "SELECT league_name AS league, team_name AS team, roster_players AS players, fantasy_points AS projected_points, updated_at FROM analytics_team_scores ORDER BY fantasy_points DESC;", "refId": "A"}],
+      "title": "League and team scoring",
+      "type": "table"
+    },
+    {
+      "datasource": {"type": "postgres", "uid": "fantasy-postgres"},
+      "gridPos": {"h": 5, "w": 6, "x": 0, "y": 13},
+      "id": 5,
+      "targets": [{"format": "table", "rawQuery": true, "rawSql": "SELECT COUNT(*) AS unpublished FROM event_outbox WHERE published_at IS NULL;", "refId": "A"}],
+      "title": "Outbox backlog",
+      "type": "stat"
+    }
+  ],
+  "refresh": "10s",
+  "schemaVersion": 41,
+  "tags": ["fantasy", "operations"],
+  "templating": {"list": []},
+  "time": {"from": "now-30m", "to": "now"},
+  "timezone": "browser",
+  "title": "Fantasy HUD Operations",
+  "uid": "fantasy-hud-operations",
+  "version": 1
+}
