@@ -15,8 +15,16 @@ export type CanonicalRosterPlayer = {
   source: { provider: string; playerId: string; teamId?: string };
 };
 
+export type CanonicalFantasyTeam = {
+  id: string;
+  name: string;
+  abbreviation?: string;
+};
+
 export type CanonicalRoster = {
   league: LeagueRef;
+  leagueName: string;
+  teams: CanonicalFantasyTeam[];
   players: CanonicalRosterPlayer[];
   fetchedAt: string;
 };

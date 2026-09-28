@@ -1,7 +1,12 @@
 {
+  "name": "Sunday Ticket Legends",
   "teams": [
     {
       "id": 1,
+      "name": "Daniel's Touchdown Factory",
+      "location": "Daniel's",
+      "nickname": "Touchdown Factory",
+      "abbreviation": "DTF",
       "roster": {
         "entries": [
           {
@@ -35,6 +40,9 @@
     },
     {
       "id": 2,
+      "location": "Bay Area",
+      "nickname": "YAC Bros",
+      "abbreviation": "YAC",
       "roster": {
         "entries": [
           {

@@ -12,6 +12,11 @@ describe("ESPN provider boundary", () => {
     const roster = await createEspnFixtureProvider(fixture).loadRoster(league);
 
     expect(roster.league).toEqual(league);
+    expect(roster.leagueName).toBe("Sunday Ticket Legends");
+    expect(roster.teams).toEqual([
+      { id: "1", name: "Daniel's Touchdown Factory", abbreviation: "DTF" },
+      { id: "2", name: "Bay Area YAC Bros", abbreviation: "YAC" },
+    ]);
     expect(roster.players).toEqual([
       {
         id: "espn:1001",
@@ -41,7 +46,7 @@ describe("ESPN provider boundary", () => {
     const fetchImpl = vi.fn(async (input: RequestInfo | URL) => {
       const url = new URL(input.toString());
       expect(url.pathname).toContain("/games/ffl/seasons/2026/segments/0/leagues/12345");
-      expect(url.searchParams.getAll("view")).toEqual(["mTeam", "mRoster"]);
+      expect(url.searchParams.getAll("view")).toEqual(["mTeam", "mRoster", "mSettings"]);
       expect(url.searchParams.get("scoringPeriodId")).toBe("3");
       return new Response(JSON.stringify(fixture), { status: 200 });
     });
@@ -53,6 +58,25 @@ describe("ESPN provider boundary", () => {
     expect(() => mapEspnRoster({ teams: [{ id: 1 }] }, league)).toThrowError(
       new ProviderError("INVALID_PAYLOAD", "ESPN team roster is malformed"),
     );
+  });
+
+  it("falls back safely when ESPN omits display names", () => {
+    const roster = mapEspnRoster({
+      teams: [{ id: 7, roster: { entries: [] } }],
+    }, league);
+
+    expect(roster.leagueName).toBe("ESPN League 12345");
+    expect(roster.teams).toEqual([{ id: "7", name: "ESPN Team 7" }]);
+  });
+
+  it("uses the settings league name when the top-level name is absent", () => {
+    const roster = mapEspnRoster({
+      settings: { name: "Keeper League" },
+      teams: [{ id: 7, name: "The Waiver Wizards", roster: { entries: [] } }],
+    }, league);
+
+    expect(roster.leagueName).toBe("Keeper League");
+    expect(roster.teams[0].name).toBe("The Waiver Wizards");
   });
 
   it("classifies malformed nested entries instead of leaking a TypeError", () => {
@@ -98,7 +122,13 @@ describe("ESPN provider boundary", () => {
         .mockRejectedValueOnce(new ProviderError("UNAVAILABLE", "temporary"))
         // .mockRejectedValueOnce(new ProviderError("UNAVAILABLE", "temporary"))
         .mockRejectedValueOnce(new ProviderError("UNAVAILABLE", "temporary"))
-        .mockResolvedValue({ league, players: [], fetchedAt: "2026-08-24T00:00:00.000Z" }),
+        .mockResolvedValue({
+          league,
+          leagueName: "Test League",
+          teams: [],
+          players: [],
+          fetchedAt: "2026-08-24T00:00:00.000Z",
+        }),
     };
     const sleep = vi.fn(async () => undefined);
 
@@ -122,6 +152,8 @@ describe("ESPN provider boundary", () => {
     const fakeProvider: ProviderPort = {
       loadRoster: async (league) => ({
         league,
+        leagueName: "Test League",
+        teams: [{ id: "42", name: "Example Team" }],
         players: [
           {
             id: "fake:42",
