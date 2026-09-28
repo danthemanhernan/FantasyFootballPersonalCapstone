@@ -1,5 +1,14 @@
 # Real-time broadcast vision crash course
 
+For a detailed side-by-side model, tracker, and deployment-runtime comparison,
+see [Vision model and runtime candidates](vision-model-candidates.md).
+Use the [real-time vision system decision rubric](vision-decision-rubric.md) to
+evaluate candidates consistently and record the evidence behind each choice.
+Keep the [vision and tracking metrics cheat sheet](vision-metrics-cheat-sheet.md)
+nearby when interpreting HOTA, AssA, IDF1, MOTA, calibration, and latency results.
+The [granular vision roadmap](vision-roadmap.md) maps these concepts to V12–V25
+implementation milestones and evidence gates.
+
 ## The actual problem
 
 The product does not need generic face recognition. It needs to answer a harder,
@@ -134,3 +143,13 @@ The first worthwhile experiment is **detector + tracker + synthetic roster
 identity**, not end-to-end player recognition. It teaches the system boundaries,
 latency, coordinates, and evaluation without hiding mistakes inside a giant
 model.
+
+## Curriculum crosswalk
+
+| Versions | System outcome |
+|---|---|
+| V12–V13 | Reproducible contracts and an authorized, versioned evaluation corpus |
+| V14–V17 | Scene-aware player detection, tracking, and stable geometry |
+| V18–V21 | Team, jersey, and calibrated canonical identity evidence |
+| V22–V23 | Bounded real-time execution and authenticated HUD replay |
+| V24–V25 | Permitted live shadow validation and controlled model operations |
