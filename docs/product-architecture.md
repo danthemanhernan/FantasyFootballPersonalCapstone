@@ -6,13 +6,19 @@
 ESPN browser session
   → Chrome extension provider adapter
   → canonical roster
-  → POST /sync/espn-roster
-  → FastAPI application
-      ├─ Postgres durable league/team/roster state
-      ├─ Redis cache/readiness dependency
-      └─ WebSocket dashboard snapshots
-          ├─ standalone web command center
-          └─ YouTube DOM overlay
+  → authorized POST /sync/espn-roster
+  → Postgres user/league/team/roster state
+
+canonical play source
+  → authenticated event ingestion
+  → Postgres inbox + event + projection + outbox transaction
+  → Redis Stream
+  → user-scoped WebSocket snapshot/delta
+      ├─ standalone web command center
+      └─ YouTube DOM overlay
+
+FastAPI metrics → Prometheus → Grafana
+Postgres analytics views ──────────┘
 ```
 
 The extension is the ESPN credential boundary: ESPN cookies remain in the
@@ -28,8 +34,9 @@ cross into the application.
 | API | validation, reads, sync, WebSockets | FastAPI container | Container service behind TLS |
 | Postgres | leagues, teams, rosters, projections | Docker volume | Managed Postgres with backups/PITR |
 | Redis | cache and dependency check | Docker volume | Managed Redis |
-| Push hub | local snapshot fan-out | API process memory | Redis Streams, NATS, or Kafka |
+| Push hub | user-scoped snapshots and projection deltas | Redis Streams plus API fan-out | Managed Redis Streams, NATS, or Kafka |
 | Vision | identity fusion and confidence policy | tested Python module | GPU worker/service |
+| Observability | service and product telemetry | Prometheus, Grafana, JSON logs, optional OTLP | Managed metrics/logs/traces |
 
 ## What is real now
 
@@ -39,6 +46,13 @@ cross into the application.
 - The standalone dashboard receives snapshots over WebSockets.
 - The YouTube content script renders a roster HUD and synthetic marker boxes.
 - Vision identity fusion abstains on ambiguous or low-confidence detections.
+- Accounts, Argon2 password hashes, encrypted provider connections, and
+  user-scoped authorization are enabled.
+- Canonical events are deduplicated in a durable inbox; score projections and
+  outbox records commit transactionally.
+- Projection deltas publish through Redis Streams.
+- Prometheus, Grafana, structured logs, CI, checksummed migrations, and tested
+  backup/restore scripts are available locally.
 
 ## What is still simulated or deferred
 
@@ -46,14 +60,25 @@ cross into the application.
 - The browser marker demo uses synthetic boxes, not video inference.
 - ESPN league/team display names are placeholders because the current canonical
   roster contract does not retain them.
-- Authentication and user tenancy are not yet enabled.
-- WebSocket fan-out is single-process and not horizontally scalable.
+- The permitted live-feed connector is not active without a licensed account,
+  source normalizer, and verified player-ID mappings.
+- Scoring projection currently demonstrates only a small event subset, not a
+  complete configurable fantasy scoring engine.
+- API WebSocket fan-out remains process-local after consuming broker events;
+  production still needs workload identity, rate limits, and scale testing.
+- No real detector, tracker, jersey recognizer, or authorized live capture path
+  is connected to the overlay.
 
 ## Next production increments
 
-1. Add accounts, encrypted provider connections, and per-user authorization.
-2. Add a permitted live play-by-play source and durable canonical event inbox.
-3. Project scoring updates transactionally and publish deltas through a broker.
-4. Add metrics, structured logs, traces, CI, migrations, and backup drills.
-5. Train/evaluate detection, tracking, team classification, and jersey OCR on
-   authorized football footage before connecting it to the live overlay.
+1. Close V10–V11 with calibrated probability and measured resilience evidence.
+2. Execute V12–V13: freeze the vision contract and create a versioned,
+   authorized evaluation corpus before choosing models.
+3. Execute V14–V17: build scene gating, detection, tracking, and field geometry
+   as independently measurable stages.
+4. Execute V18–V21: add team, jersey, and identity evidence with calibrated
+   abstention and a strict false-label budget.
+5. Execute V22–V23: optimize the bounded real-time graph and replay it through
+   the production broker and HUD.
+6. Execute V24–V25: validate a permitted live path in shadow mode, then add
+   model lifecycle, drift, canary, rollback, and release controls.

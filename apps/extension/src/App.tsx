@@ -52,12 +52,42 @@ export default function App() {
   const [leagueId, setLeagueId] = useState("");
   const [teamId, setTeamId] = useState("");
   const [season, setSeason] = useState(2026);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [accessToken, setAccessToken] = useState(
+    () => window.localStorage.getItem("fantasy-hud.token") || "",
+  );
+
+  const authenticate = async (mode: "register" | "login") => {
+    setEspnStatus("Authenticating...");
+    try {
+      const response = await fetch(
+        `${apiBaseUrl}${mode === "register" ? "/accounts/register" : "/auth/token"}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        },
+      );
+      if (!response.ok) throw new Error(`Authentication returned HTTP ${response.status}`);
+      const result = await response.json() as { access_token: string };
+      window.localStorage.setItem("fantasy-hud.token", result.access_token);
+      setAccessToken(result.access_token);
+      setEspnStatus("Signed in");
+    } catch (error) {
+      setEspnStatus(error instanceof Error ? error.message : "Authentication failed");
+    }
+  };
 
   const loadLiveRoster = async () => {
     const selectedLeagueId = leagueId.trim();
     const selectedTeamId = teamId.trim();
     if (!selectedLeagueId || !selectedTeamId) {
       setEspnStatus("Enter both an ESPN league ID and team ID");
+      return;
+    }
+    if (!accessToken) {
+      setEspnStatus("Sign in before syncing a roster");
       return;
     }
     setEspnStatus("Loading ESPN roster...");
@@ -98,7 +128,10 @@ export default function App() {
       };
       const response = await fetch(`${apiBaseUrl}/sync/espn-roster`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error(`Backend sync returned HTTP ${response.status}`);
@@ -197,6 +230,14 @@ export default function App() {
         latestEvent={latestEvent}
         touchdownMessage={touchdownMessage}
       />
+      <section className="account-settings" aria-label="Account settings">
+        <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
+        <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+        <div>
+          <button onClick={() => authenticate("login")}>Sign in</button>
+          <button className="secondary" onClick={() => authenticate("register")}>Register</button>
+        </div>
+      </section>
       <section className="league-settings" aria-label="ESPN league settings">
         <label>
           League ID
