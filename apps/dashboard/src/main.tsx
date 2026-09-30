@@ -69,6 +69,10 @@ function App() {
   }, [token]);
 
   const authenticate = async (mode: "register" | "login") => {
+    if (mode === "register" && password.length < 8) {
+      setAuthStatus("Password must be at least 8 characters.");
+      return;
+    }
     setAuthStatus("Working...");
     const response = await fetch(
       `${apiUrl}${mode === "register" ? "/accounts/register" : "/auth/token"}`,
@@ -79,7 +83,13 @@ function App() {
       },
     );
     if (!response.ok) {
-      setAuthStatus(`Authentication failed (${response.status})`);
+      const body = await response.json().catch(() => null) as
+        | { detail?: string | Array<{ msg?: string }> }
+        | null;
+      const detail = typeof body?.detail === "string"
+        ? body.detail
+        : body?.detail?.[0]?.msg;
+      setAuthStatus(detail || `Authentication failed (${response.status})`);
       return;
     }
     const result = await response.json() as { access_token: string };
@@ -96,7 +106,7 @@ function App() {
           <h1>Sunday Command Center</h1>
           <p className="lede">Create a local account to isolate and protect your leagues.</p>
           <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-          <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+          <label>Password<input type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} /></label>
           <div className="auth-actions">
             <button onClick={() => authenticate("login")}>Sign in</button>
             <button className="secondary" onClick={() => authenticate("register")}>Create account</button>
