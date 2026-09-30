@@ -18,8 +18,19 @@ type EspnRosterEntry = {
   lineupSlotId?: number;
   playerPoolEntry?: { id?: string | number; player?: EspnPlayer };
 };
-type EspnTeam = { id: string | number; roster?: { entries?: EspnRosterEntry[] } };
-type EspnLeaguePayload = { teams: EspnTeam[] };
+type EspnTeam = {
+  id: string | number;
+  name?: string;
+  location?: string;
+  nickname?: string;
+  abbreviation?: string;
+  roster?: { entries?: EspnRosterEntry[] };
+};
+type EspnLeaguePayload = {
+  name?: string;
+  settings?: { name?: string };
+  teams: EspnTeam[];
+};
 
 const positionById: Record<number, CanonicalPosition> = {
   1: "QB",
@@ -42,18 +53,44 @@ const teamById: Record<number, string> = {
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null && !Array.isArray(value);
 
+const nonBlankString = (value: unknown): value is string =>
+  typeof value === "string" && value.trim() !== "";
+
+const optionalString = (value: unknown): value is string | undefined =>
+  value === undefined || typeof value === "string";
+
 const isPayload = (value: unknown): value is EspnLeaguePayload => {
   if (!isRecord(value) || !Array.isArray(value.teams)) return false;
+  if (!optionalString(value.name)) return false;
+  if (
+    value.settings !== undefined &&
+    (!isRecord(value.settings) || !optionalString(value.settings.name))
+  ) return false;
   return value.teams.every((team): team is EspnTeam => {
     if (!isRecord(team) || (typeof team.id !== "string" && typeof team.id !== "number")) {
       return false;
     }
+    if (
+      !optionalString(team.name) ||
+      !optionalString(team.location) ||
+      !optionalString(team.nickname) ||
+      !optionalString(team.abbreviation)
+    ) return false;
     return team.roster === undefined || (
       isRecord(team.roster) &&
       Array.isArray(team.roster.entries) &&
       team.roster.entries.every((entry) => isRecord(entry))
     );
   });
+};
+
+const espnTeamName = (team: EspnTeam): string => {
+  if (nonBlankString(team.name)) return team.name.trim();
+  const composedName = [team.location, team.nickname]
+    .filter(nonBlankString)
+    .map((part) => part.trim())
+    .join(" ");
+  return composedName || `ESPN Team ${team.id}`;
 };
 
 export const mapEspnRoster = (
@@ -64,6 +101,19 @@ export const mapEspnRoster = (
   if (!isPayload(payload)) {
     throw new ProviderError("INVALID_PAYLOAD", "ESPN roster payload is malformed");
   }
+
+  const leagueName = nonBlankString(payload.name)
+    ? payload.name.trim()
+    : nonBlankString(payload.settings?.name)
+      ? payload.settings.name.trim()
+      : `ESPN League ${league.leagueId}`;
+  const teams = payload.teams.map((team) => ({
+    id: String(team.id),
+    name: espnTeamName(team),
+    ...(nonBlankString(team.abbreviation)
+      ? { abbreviation: team.abbreviation.trim() }
+      : {}),
+  }));
 
   const players = payload.teams.flatMap((team) => {
     if (!Array.isArray(team.roster?.entries)) {
@@ -96,7 +146,7 @@ export const mapEspnRoster = (
     });
   });
 
-  return { league, players, fetchedAt };
+  return { league, leagueName, teams, players, fetchedAt };
 };
 
 export type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
@@ -123,6 +173,7 @@ export class EspnProvider implements ProviderPort {
     );
     url.searchParams.append("view", "mTeam");
     url.searchParams.append("view", "mRoster");
+    url.searchParams.append("view", "mSettings");
     if (ref.scoringPeriodId !== undefined) {
       url.searchParams.set("scoringPeriodId", String(ref.scoringPeriodId));
     }

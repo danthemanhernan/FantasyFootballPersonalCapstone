@@ -54,16 +54,24 @@ export default function App() {
   const [season, setSeason] = useState(2026);
 
   const loadLiveRoster = async () => {
-    if (!leagueId.trim() || !teamId.trim()) {
+    const selectedLeagueId = leagueId.trim();
+    const selectedTeamId = teamId.trim();
+    if (!selectedLeagueId || !selectedTeamId) {
       setEspnStatus("Enter both an ESPN league ID and team ID");
       return;
     }
     setEspnStatus("Loading ESPN roster...");
     try {
-      const roster = await new EspnProvider().loadRoster({ leagueId, season });
-      const teamPlayers = roster.players.filter((player) => player.source.teamId === teamId);
+      const roster = await new EspnProvider().loadRoster({ leagueId: selectedLeagueId, season });
+      const selectedTeam = roster.teams.find((team) => team.id === selectedTeamId);
+      if (!selectedTeam) {
+        throw new Error(`ESPN team ID ${selectedTeamId} was not found in ${roster.leagueName}`);
+      }
+      const teamPlayers = roster.players.filter(
+        (player) => player.source.teamId === selectedTeamId,
+      );
       if (teamPlayers.length === 0) {
-        throw new Error(`No players found for ESPN team ID ${teamId}`);
+        throw new Error(`No players found for ${selectedTeam.name} (team ID ${selectedTeamId})`);
       }
       const hudPlayers: Player[] = teamPlayers.map((player) => ({
         id: player.id,
@@ -76,11 +84,11 @@ export default function App() {
       setPlayers(hudPlayers);
 
       const payload = {
-        league_id: leagueId,
+        league_id: selectedLeagueId,
         season,
-        team_id: teamId,
-        league_name: `ESPN League ${leagueId}`,
-        team_name: `ESPN Team ${teamId}`,
+        team_id: selectedTeamId,
+        league_name: roster.leagueName,
+        team_name: selectedTeam.name,
         players: teamPlayers.map((player) => ({
           player_id: player.source.playerId,
           name: player.name,
@@ -103,7 +111,9 @@ export default function App() {
         }).catch(() => undefined);
       }
       console.log("Live ESPN roster:", roster);
-      setEspnStatus(`Synced ${teamPlayers.length} players to the HUD`);
+      setEspnStatus(
+        `Synced ${teamPlayers.length} players from ${selectedTeam.name} in ${roster.leagueName}`,
+      );
     } catch (error) {
       console.error("ESPN request failed:", error);
       setEspnStatus(error instanceof Error ? error.message : "ESPN request failed");
