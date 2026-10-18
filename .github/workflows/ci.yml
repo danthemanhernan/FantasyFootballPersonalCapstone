@@ -34,6 +34,18 @@ jobs:
       - run: uv run pytest -q
         working-directory: services/read_model
 
+  probability:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --group test
+        working-directory: ml/probability
+      - run: uv run pytest -q
+        working-directory: ml/probability
+
   compose:
     runs-on: ubuntu-latest
     steps:
