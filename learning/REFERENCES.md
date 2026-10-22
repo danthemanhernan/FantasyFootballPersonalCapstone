@@ -23,3 +23,9 @@ Replace placeholders with the exact source, date read, and takeaway. Categories:
 - aaronweldy, [Unofficial ESPN Fantasy OpenAPI description](https://github.com/aaronweldy/espn-openapi), read 2026-09-06. Takeaway: the observed roster contract includes `playerId`, `lineupSlotId`, and nested player fields, but the project warns that ESPN may change the undocumented API.
 - IETF, [RFC 3339](https://www.rfc-editor.org/rfc/rfc3339), read 2026-09-06. Takeaway: explicit timestamp formats make event ordering and replay inputs unambiguous across systems.
 - MDN, [Web Storage API](https://developer.mozilla.org/en-US/docs/Web/API/Web_Storage_API), read 2026-08-24. Takeaway: browser storage is a string-based client-side boundary, so application data needs explicit serialization, validation, and failure handling.
+
+## Monte Carlo and calibration
+
+- NumPy, [Random Generator](https://numpy.org/doc/stable/reference/random/generator.html), read 2026-10-12. Takeaway: a local generator initialized with a recorded seed makes a simulation reproducible, but NumPy does not promise identical bit streams across future versions, so experiment evidence must record dependency versions.
+- scikit-learn, [Probability calibration](https://scikit-learn.org/stable/modules/calibration.html), read 2026-10-12. Takeaway: a calibrated 0.8 forecast should resolve positively about 80% of the time; Brier loss combines reliability and discrimination, so calibration also needs a reliability table or curve.
+- Glenn W. Brier, [Verification of Forecasts Expressed in Terms of Probability](https://doi.org/10.1175/1520-0493(1950)078%3C0001:VOFEIT%3E2.0.CO;2), 1950; read 2026-10-12. Takeaway: binary probability forecasts can be evaluated by the mean squared difference between the stated probability and the resolved outcome.

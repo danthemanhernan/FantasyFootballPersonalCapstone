@@ -59,6 +59,10 @@ export default function App() {
   );
 
   const authenticate = async (mode: "register" | "login") => {
+    if (mode === "register" && password.length < 8) {
+      setEspnStatus("Password must be at least 8 characters.");
+      return;
+    }
     setEspnStatus("Authenticating...");
     try {
       const response = await fetch(
@@ -232,7 +236,7 @@ export default function App() {
       />
       <section className="account-settings" aria-label="Account settings">
         <label>Email<input type="email" value={email} onChange={(event) => setEmail(event.target.value)} /></label>
-        <label>Password<input type="password" value={password} onChange={(event) => setPassword(event.target.value)} /></label>
+        <label>Password<input type="password" minLength={8} value={password} onChange={(event) => setPassword(event.target.value)} /></label>
         <div>
           <button onClick={() => authenticate("login")}>Sign in</button>
           <button className="secondary" onClick={() => authenticate("register")}>Register</button>
