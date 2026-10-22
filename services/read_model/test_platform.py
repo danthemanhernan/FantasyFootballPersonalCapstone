@@ -25,6 +25,28 @@ async def register(app, email: str) -> str:
 
 
 @pytest.mark.asyncio
+async def test_registration_requires_at_least_eight_password_characters():
+    app = create_app(auth_required=True)
+
+    too_short = await request(
+        app,
+        "POST",
+        "/accounts/register",
+        json={"email": "short@example.com", "password": "1234567"},
+    )
+    accepted = await request(
+        app,
+        "POST",
+        "/accounts/register",
+        json={"email": "eight@example.com", "password": "12345678"},
+    )
+
+    assert too_short.status_code == 422
+    assert too_short.json()["detail"][0]["ctx"]["min_length"] == 8
+    assert accepted.status_code == 201
+
+
+@pytest.mark.asyncio
 async def test_dashboard_data_is_isolated_per_account():
     app = create_app(auth_required=True)
     token_a = await register(app, "a@example.com")
