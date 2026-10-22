@@ -1,0 +1,20 @@
+{
+  "matchup_id": "synthetic-week-1-matchup-1",
+  "as_of": "2026-09-13T18:30:00Z",
+  "home": {
+    "team_id": "home-team",
+    "current_points": 72.5,
+    "remaining_mean": 38.0,
+    "remaining_stddev": 12.0
+  },
+  "away": {
+    "team_id": "away-team",
+    "current_points": 68.0,
+    "remaining_mean": 36.0,
+    "remaining_stddev": 10.0
+  },
+  "simulations": 10000,
+  "seed": 20261018,
+  "model_version": "v10-baseline-1"
+}
+
