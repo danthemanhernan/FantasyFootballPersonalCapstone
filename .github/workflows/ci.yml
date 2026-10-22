@@ -46,6 +46,18 @@ jobs:
       - run: uv run pytest -q
         working-directory: ml/probability
 
+  vision-lab:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+      - run: uv sync --frozen --group test
+        working-directory: ml/vision_lab
+      - run: uv run pytest -q
+        working-directory: ml/vision_lab
+
   compose:
     runs-on: ubuntu-latest
     steps:
