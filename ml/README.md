@@ -12,3 +12,7 @@ Add implementation only when its milestone creates a measurable need. Model
 weights, licensed footage, generated videos, and large datasets must stay out of
 Git. Commit configuration, small fixtures, schemas, evaluation summaries, and
 reproduction instructions instead.
+
+`vision_lab/` is a deliberately isolated learning spike. It teaches and
+instruments the video-to-tracks loop without counting as V15 model-selection
+evidence.

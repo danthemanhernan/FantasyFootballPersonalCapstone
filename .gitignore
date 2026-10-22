@@ -6,4 +6,12 @@ dist
 *.tsbuildinfo
 __pycache__/
 .pytest_cache/
+.venv/
 backups/
+
+# Local vision inputs, model weights, and generated artifacts stay out of Git.
+ml/vision_lab/data/
+ml/vision_lab/runs/
+ml/vision_lab/weights/
+*.pt
+*.onnx

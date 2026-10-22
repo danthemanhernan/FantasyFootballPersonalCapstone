@@ -1,0 +1,29 @@
+[project]
+name = "fantasy-hud-vision-lab"
+version = "0.1.0"
+description = "Instrumented video detection and tracking lab for Fantasy HUD"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "numpy>=2,<3",
+  "opencv-python-headless>=4.10,<5",
+]
+
+[project.scripts]
+vision-lab = "vision_lab.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+model = [
+  "lap>=0.5.12",
+  "ultralytics>=8.3,<9",
+]
+test = ["pytest>=8,<9"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["vision_lab"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
