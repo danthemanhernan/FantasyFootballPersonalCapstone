@@ -27,7 +27,24 @@ Observe that a video is discrete frames plus timing metadata: width, height,
 frame rate, frame count, and duration. Frame index divided by FPS gives media
 time only for constant-frame-rate video.
 
-## 3. Install and run the pretrained baseline
+## 3. Create a camera-shot manifest
+
+Scan every frame while learning and evaluating cut behavior:
+
+```bash
+uv run vision-lab scan-shots data/annotation_candidates/clip.mp4 \
+  --output runs/clip-shots/shots.jsonl
+```
+
+For a faster exploratory pass, add `--sample-fps 10`. Sampling uses absolute
+media time, so rates such as 7 FPS do not accumulate timing drift. Each JSONL
+record preserves the original source frame, timestamp, shot ID, cut decision,
+and histogram distance. The detector is intentionally lightweight: replay wipes,
+fast pans, exposure changes, and similar-looking cuts still require review.
+The default `0.15` threshold detects the two reviewed hard cuts in the first
+broadcast lab clip; it is a starting calibration point, not a universal value.
+
+## 4. Install and run the pretrained baseline
 
 ```bash
 uv sync --group model --group test
@@ -48,7 +65,7 @@ Inspect these artifacts:
 - `frames.jsonl`: replayable boxes, confidences, track IDs, and media times.
 - `summary.json`: reproducibility metadata and throughput/latency measurements.
 
-## 4. Diagnose three failures
+## 5. Diagnose three failures
 
 Find one missed player, one false positive, and one identity switch. Record the
 timestamp, shot type, occlusion, subject size, blur, and likely cause. Do not
@@ -115,3 +132,16 @@ The first CVAT-ready clip is
 [broadcast annotation protocol](../../docs/vision-broadcast-annotation-protocol.md)
 to create persistent player, official, and sideline-person tracks without
 turning the first exercise into jersey recognition or long-term re-identification.
+
+Use the reviewed shot manifest when validating an export:
+
+```bash
+uv run vision-lab validate-cvat \
+  --annotations data/annotations/cvat/clip/annotations.xml \
+  --shots runs/clip-shots/shots.jsonl \
+  --output runs/clip-validation/validation.json
+```
+
+Tracks spanning a detected camera cut are review candidates. A cut is not proof
+that identity changed, and automatic cuts must be reviewed before becoming
+dataset boundaries.
