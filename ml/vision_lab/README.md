@@ -145,3 +145,24 @@ uv run vision-lab validate-cvat \
 Tracks spanning a detected camera cut are review candidates. A cut is not proof
 that identity changed, and automatic cuts must be reviewed before becoming
 dataset boundaries.
+
+## Prepare frame-exact CVAT video tasks
+
+After reviewing the candidate cuts, convert the source into one video per shot:
+
+```bash
+uv run vision-lab prepare-cvat-clips \
+  data/annotation_candidates/clip.mp4 \
+  --shots runs/clip-shots/shots.jsonl \
+  --output-dir runs/clip-cvat-preparation
+```
+
+The command uses FFmpeg's frame-number `trim` filter rather than keyframe-only
+stream copying. Every encoded clip is checked for the expected frame count. The
+resulting `manifest.json` records inclusive source-frame boundaries, media times,
+source and shot-manifest hashes, and one SHA-256 checksum per clip.
+
+Create one CVAT video task per generated clip. Run the existing `track` command
+and `export-cvat-mot` when model preannotations are useful; keeping those stages
+separate prevents sampled image detections from being mistaken for persistent
+track identities.

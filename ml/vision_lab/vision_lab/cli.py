@@ -38,6 +38,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Sampling rate; omit to inspect every source frame",
     )
 
+    prepare = commands.add_parser(
+        "prepare-cvat-clips",
+        help="Split a video into frame-exact CVAT clips from a reviewed shot manifest",
+    )
+    prepare.add_argument("source", type=Path)
+    prepare.add_argument("--shots", type=Path, required=True)
+    prepare.add_argument("--output-dir", type=Path, required=True)
+    prepare.add_argument("--ffmpeg", default="ffmpeg")
+
     track = commands.add_parser("track", help="Detect and track people in a video")
     track.add_argument("source", type=Path)
     track.add_argument("--output-dir", type=Path, default=Path("runs/baseline"))
@@ -145,6 +154,17 @@ def main() -> None:
                 threshold=args.threshold,
                 bins=args.bins,
                 sample_fps=args.sample_fps,
+            )
+        )
+    elif args.command == "prepare-cvat-clips":
+        from .dataset_preparation import prepare_shot_clips
+
+        payload = asdict(
+            prepare_shot_clips(
+                args.source,
+                args.shots,
+                args.output_dir,
+                ffmpeg=args.ffmpeg,
             )
         )
     elif args.command == "track":
